@@ -224,7 +224,8 @@
             </div>
 
             <div class="mb-4">
-                <h3 class="text-sm font-black text-slate-800 mb-2">Feladatok sorrendjének módosítása (⬆️ / ⬇️) vagy új lépés felvétele:</h3>
+                <h3 class="text-sm font-black text-slate-800 mb-1">A foglalkozás lépéseinek sorrendje (A kötelező 7 lépés nem törölhető):</h3>
+                <p class="text-xs text-slate-500 mb-2">Az általad hozzáadott extra lépések törölhetők.</p>
                 <div id="settings-steps-list" class="flex flex-col gap-2 mb-3"></div>
                 <div class="flex gap-2">
                     <input id="new-step-title" type="text" placeholder="Új feladat neve (pl. TÜKÖRGYAKORLAT)" class="flex-1 p-2 rounded-xl border border-slate-300 font-bold text-sm">
@@ -252,13 +253,13 @@
         ];
 
         let scheduleSteps = [
-            { id: 1, title: 'KÖSZÖNÉS', leftIcon: '👋', rightIcon: '😊', completed: false, attachedCards: [] },
-            { id: 2, title: 'AJAKGYAKORLATOK', leftIcon: '👄', rightIcon: '😘', completed: false, attachedCards: [] },
-            { id: 3, title: 'NYELVTORNA', leftIcon: '👅', rightIcon: '😋', completed: false, attachedCards: [] },
-            { id: 4, title: 'SZÍVÓ-FÚJÓ', leftIcon: '💨', rightIcon: '🥤', completed: false, attachedCards: [] },
-            { id: 5, title: 'AUDITÍV DIFFERENCIÁLÁS', leftIcon: '👂', rightIcon: '🗣️🖼️', completed: false, attachedCards: [] },
-            { id: 6, title: 'JUTI JÁTÉK', leftIcon: '🎁', rightIcon: '🧸', completed: false, attachedCards: [] },
-            { id: 7, title: 'ELBÚCSÚZÁS', leftIcon: '🚪', rightIcon: '👋', completed: false, attachedCards: [] }
+            { id: 1, title: 'KÖSZÖNÉS', leftIcon: '👋', rightIcon: '😊', completed: false, attachedCards: [], isDefault: true },
+            { id: 2, title: 'AJAKGYAKORLATOK', leftIcon: '👄', rightIcon: '😘', completed: false, attachedCards: [], isDefault: true },
+            { id: 3, title: 'NYELVTORNA', leftIcon: '👅', rightIcon: '😋', completed: false, attachedCards: [], isDefault: true },
+            { id: 4, title: 'SZÍVÓ-FÚJÓ', leftIcon: '💨', rightIcon: '🥤', completed: false, attachedCards: [], isDefault: true },
+            { id: 5, title: 'AUDITÍV DIFFERENCIÁLÁS', leftIcon: '👂', rightIcon: '🗣️🖼️', completed: false, attachedCards: [], isDefault: true },
+            { id: 6, title: 'JUTI JÁTÉK', leftIcon: '🎁', rightIcon: '🧸', completed: false, attachedCards: [], isDefault: true },
+            { id: 7, title: 'ELBÚCSÚZÁS', leftIcon: '🚪', rightIcon: '👋', completed: false, attachedCards: [], isDefault: true }
         ];
 
         let sidebarCards = [
@@ -271,83 +272,52 @@
         let completionMode = 'fade';
         let selectedCardForTap = null;
 
-        // --- SAJÁT HANG RÖGZÍTÉSE (Mikrofon API) ---
-        let mediaRecorder = null;
-        let audioChunks = [];
-
-        function startRecordingAudio(cardId, event) {
+        // --- HANGRÖGZÍTÉS ÉS HANGERŐVEZÉRELT LEJÁTSZÁS ---
+        function recordCardVoice(cardId, event) {
             event.stopPropagation();
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert('A böngésződ nem támogatja a mikrofon használatát!');
+                alert('A böngésződ nem támogatja a mikrofont!');
                 return;
             }
 
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+                const mediaRecorder = new MediaRecorder(stream);
+                let audioChunks = [];
 
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     const audioUrl = URL.createObjectURL(audioBlob);
                     
-                    // Mentjük a kártyához
                     const card = sidebarCards.find(c => c.id === cardId);
                     if (card) {
                         card.audioUrl = audioUrl;
                         saveToStorage();
                         renderSidebarCards();
-                        playChime(600, 900);
+                        playChime(700, 1000);
+                        alert('🎙️ Saját hang sikeresen rögzítve!');
                     }
+                    stream.getTracks().forEach(track => track.stop());
                 };
 
                 mediaRecorder.start();
-                alert('🎙️ Felvétel elindult! Mondd ki a hangot, majd kattints az OK gombra a leállításhoz.');
-                mediaRecorder.stop(); // Amikor bezárja az alertet, leállítjuk
-            }).catch(err => {
-                alert('Nem sikerült elérni a mikrofont. Kérlek engedélyezd a böngészőben!');
-            });
-        }
-
-        // Korszerűbb, gombnyomásos felvétel:
-        function recordCardVoice(cardId, event) {
-            event.stopPropagation();
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                const recorder = new MediaRecorder(stream);
-                let chunks = [];
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = () => {
-                    const blob = new Blob(chunks, { type: 'audio/webm' });
-                    const url = URL.createObjectURL(blob);
-                    const card = sidebarCards.find(c => c.id === cardId);
-                    if (card) {
-                        card.audioUrl = url;
-                        saveToStorage();
-                        renderSidebarCards();
-                        playChime(700, 1000);
-                    }
-                    // Leállítjuk a mikrofon streamet
-                    stream.getTracks().forEach(track => track.stop());
-                };
-                
-                recorder.start();
+                alert('🎙️ Felvétel folyamatban... Mondd ki a hangot, majd 3 másodperc múlva kattints az OK gombra!');
                 setTimeout(() => {
-                    recorder.stop();
-                    alert('🎙️ Saját hang sikeresen rögzítve ehhez a kártyához!');
-                }, 2000); // 2 másodperces felvételi ablak
+                    if (mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                }, 3000);
             }).catch(() => {
                 alert('Mikrofon engedély szükséges a hangfelvételhez!');
             });
         }
 
         function playCardAudio(card) {
-            playChime(440, 660);
+            playChime(500, 750);
             if (card.audioUrl) {
                 const audio = new Audio(card.audioUrl);
-                audio.play().catch(e => console.log(e));
+                audio.volume = 1.0; // Teljes hangerő
+                audio.play().catch(e => console.log('Hanglejátszási hiba:', e));
             }
         }
 
@@ -360,11 +330,11 @@
                 gain.connect(ctx.destination);
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq1, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + 0.16);
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+                osc.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.17);
                 osc.start();
-                osc.stop(ctx.currentTime + 0.19);
+                osc.stop(ctx.currentTime + 0.18);
             } catch (e) {}
         }
 
@@ -404,7 +374,7 @@
                         <button onclick="event.stopPropagation(); playCardAudio(card)" title="Lejátszás" class="w-8 h-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center justify-center text-sm font-bold">
                             🔊
                         </button>
-                        <button onclick="recordCardVoice('${card.id}', event)" title="Saját hang rögzítése (kattints és beszélj 2 mp-ig)" class="w-8 h-8 rounded-full ${micBg} hover:opacity-80 flex items-center justify-center text-xs font-bold">
+                        <button onclick="recordCardVoice('${card.id}', event)" title="Saját hang rögzítése" class="w-8 h-8 rounded-full ${micBg} hover:opacity-80 flex items-center justify-center text-xs font-bold">
                             🎙️
                         </button>
                         <button onclick="removeSidebarCard(${index}, event)" title="Kártya törlése a sávból" class="w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-600 flex items-center justify-center text-xs font-black transition">
@@ -589,6 +559,7 @@
             document.getElementById('schedule-bg').style.backgroundColor = panel;
             document.getElementById('app-header').style.backgroundColor = header;
         }
+
         function renderSettingsStepsList() {
             const list = document.getElementById('settings-steps-list');
             if (!list) return;
@@ -596,32 +567,50 @@
             scheduleSteps.forEach((step, idx) => {
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between bg-slate-100 px-3 py-2 rounded-xl border border-slate-200';
+                
+                // Ha alapértelmezett (default) lépés, nem engedjük törölni!
+                const deleteBtnHtml = step.isDefault 
+                    ? `<span class="text-[11px] text-slate-400 font-bold px-2">Alaplépés</span>`
+                    : `<button onclick="deleteStep(${idx})" class="px-2.5 py-1 bg-rose-100 text-rose-700 rounded shadow text-xs font-bold hover:bg-rose-600 hover:text-white transition">🗑️ Törlés</button>`;
+
                 item.innerHTML = `
                     <span class="font-black text-sm text-slate-800">${idx + 1}. ${step.leftIcon} ${step.title}</span>
-                    <div class="flex gap-1.5">
+                    <div class="flex gap-1.5 items-center">
                         <button onclick="moveStep(${idx}, -1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬆️</button>
                         <button onclick="moveStep(${idx}, 1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬇️</button>
-                        <button onclick="deleteStep(${idx})" class="px-2 py-1 bg-rose-100 text-rose-700 rounded shadow text-xs font-bold">🗑️</button>
+                        ${deleteBtnHtml}
                     </div>
                 `;
                 list.appendChild(item);
             });
         }
+
         function moveStep(idx, dir) {
             const t = idx + dir;
             if (t < 0 || t >= scheduleSteps.length) return;
             const temp = scheduleSteps[idx]; scheduleSteps[idx] = scheduleSteps[t]; scheduleSteps[t] = temp;
             saveToStorage(); renderScheduleSteps();
         }
-        function deleteStep(idx) { scheduleSteps.splice(idx, 1); saveToStorage(); renderScheduleSteps(); }
+
+        function deleteStep(idx) {
+            if (scheduleSteps[idx].isDefault) {
+                alert('A kötelező alaplépések nem törölhetők!');
+                return;
+            }
+            scheduleSteps.splice(idx, 1);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
         function addNewScheduleStep() {
             const title = document.getElementById('new-step-title').value.trim().toUpperCase();
             const icon = document.getElementById('new-step-icon').value.trim() || '⭐';
             if (!title) return;
-            scheduleSteps.push({ id: Date.now(), title, leftIcon: icon, rightIcon: '✨', completed: false, attachedCards: [] });
+            scheduleSteps.push({ id: Date.now(), title, leftIcon: icon, rightIcon: '✨', completed: false, attachedCards: [], isDefault: false });
             document.getElementById('new-step-title').value = '';
             saveToStorage(); renderScheduleSteps();
         }
+
         function resetAllSteps() { scheduleSteps.forEach(s => s.completed = false); saveToStorage(); renderScheduleSteps(); }
         function triggerCelebration() {
             const end = Date.now() + 3500;
@@ -664,11 +653,11 @@
             navigator.clipboard.writeText(window.location.href).then(() => alert('🔗 A linket kimásoltam a vágólapra!'));
         }
         function saveToStorage() {
-            try { localStorage.setItem('logopedia_state_v4', JSON.stringify({ scheduleSteps, sidebarCards, completionMode })); } catch(e){}
+            try { localStorage.setItem('logopedia_state_v5', JSON.stringify({ scheduleSteps, sidebarCards, completionMode })); } catch(e){}
         }
         function loadFromStorage() {
             try {
-                const r = localStorage.getItem('logopedia_state_v4');
+                const r = localStorage.getItem('logopedia_state_v5');
                 if (r) {
                     const p = JSON.parse(r);
                     if (p.scheduleSteps) scheduleSteps = p.scheduleSteps;
