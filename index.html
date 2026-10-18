@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logopédiai Foglalkozás – Interaktív Menetrend</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .step-card {
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .step-completed-fade {
+            opacity: 0.55;
+            background-color: #e2e8f0 !important;
+            border-color: #cbd5e1 !important;
+        }
+        .step-completed-hide {
+            transform: scale(0.85) translateX(60px);
+            opacity: 0;
+            max-height: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            border-width: 0 !important;
+            overflow: hidden;
+        }
+        .active-step-glow {
+            background: linear-gradient(90deg, #fef08a 0%, #fde047 100%) !important;
+            border: 3px solid #eab308 !important;
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.55);
+        }
+        .sidebar-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .sidebar-card:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+        }
+        .selected-card-ring {
+            outline: 4px solid #facc15;
+            transform: scale(1.04);
+        }
+    </style>
+</head>
+<body id="app-body" class="bg-slate-900 min-h-screen flex flex-col items-center justify-start p-2 md:p-5">
+
+    <!-- Csillám és tűzijáték vászon -->
+    <canvas id="sparkle-canvas" class="pointer-events-none fixed inset-0 w-full h-full z-50"></canvas>
+
+    <!-- FŐ KERET (Pontosan a táblagépes látványterv alapján) -->
+    <div class="w-full max-w-6xl bg-[#f1f5f9] rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-800 flex flex-col">
+
+        <!-- FEJLÉC -->
+        <header id="app-header" class="bg-[#0f2942] text-white px-4 py-3 flex items-center justify-between relative">
+            <!-- Bal oldali kék házikó (Főmenü / Képtár) -->
+            <div class="flex items-center gap-3">
+                <button onclick="openModal('library-modal')" title="Főmenü és Logopédiai Képtár" class="w-11 h-11 rounded-full bg-[#1da1f2] hover:bg-sky-400 flex items-center justify-center shadow-md transition transform active:scale-95">
+                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/>
+                    </svg>
+                </button>
+                <button onclick="resetAllSteps()" title="Új foglalkozás indítása" class="bg-slate-700 hover:bg-slate-600 text-xs font-extrabold px-3 py-2 rounded-full transition">
+                    ↺ ALAPHELYZET
+                </button>
+            </div>
+
+            <!-- Középső cím -->
+            <h1 id="main-title" class="text-xl md:text-3xl font-black tracking-wider uppercase text-center">
+                LOGOPÉDIAI FOGLALKOZÁS
+            </h1>
+
+            <!-- Jobb oldali Megosztás és Beállítások gombok -->
+            <div class="flex items-center gap-2">
+                <button onclick="shareSchedule()" class="bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-xs md:text-sm px-3.5 py-2 rounded-full shadow flex items-center gap-1.5 transition active:scale-95">
+                    <span>MEGOSZTÁS</span>
+                    <span>🔗</span>
+                </button>
+                <button onclick="openModal('settings-modal')" class="bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-xs md:text-sm px-3.5 py-2 rounded-full shadow flex items-center gap-1.5 transition active:scale-95">
+                    <span>BEÁLLÍTÁSOK</span>
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Színes elválasztó csík a fejléc alatt -->
+        <div class="h-1.5 w-full flex">
+            <div class="w-1/4 bg-sky-400"></div>
+            <div class="w-1/4 bg-amber-400"></div>
+            <div class="w-1/4 bg-emerald-400"></div>
+            <div class="w-1/4 bg-rose-500"></div>
+        </div>
+
+        <!-- TARTALMI RÉSZ -->
+        <div class="grid grid-cols-1 md:grid-cols-12 min-h-[620px]">
+
+            <!-- BAL OLDALI SÁV: BŐVÍTHETŐ KÁRTYÁK (Türkizkék háttér) -->
+            <aside class="md:col-span-3 bg-gradient-to-b from-[#0ea5e9] to-[#0369a1] p-4 flex flex-col gap-3 border-r-2 border-slate-200">
+                <div class="bg-[#0c4a6e]/60 text-white text-center font-extrabold text-sm py-2 px-3 rounded-full tracking-wide shadow-inner">
+                    BŐVÍTHETŐ KÁRTYÁK
+                </div>
+                <p class="text-[11px] text-sky-100 text-center -mt-1">
+                    Húzd rá egy feladatra, vagy kattints a kártyára, majd a feladatra!
+                </p>
+
+                <!-- Hívóképek listája -->
+                <div id="calling-cards-list" class="flex flex-col gap-2.5 overflow-y-auto max-h-[430px] pr-1"></div>
+
+                <!-- Még és + Új kártya gombok -->
+                <div class="mt-auto flex flex-col gap-2 pt-2 border-t border-sky-400/40">
+                    <button onclick="selectOrDragRepeatCard()" id="repeat-card-btn" class="sidebar-card bg-white text-slate-900 font-black py-3 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 text-lg border-2 border-slate-200">
+                        <span>MÉG</span>
+                        <span class="text-2xl">↺</span>
+                    </button>
+                    <button onclick="openModal('library-modal')" class="sidebar-card bg-white hover:bg-amber-50 text-slate-900 font-black py-3 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 text-base border-2 border-slate-200">
+                        <span>+ ÚJ KÁRTYA</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- JOBB OLDALI RÉSZ: 7 LÉPÉSES MENETREND + ÜNNEPLÉS KÁRTYA -->
+            <main id="schedule-bg" class="md:col-span-9 bg-[#f1f5f9] p-4 md:p-6 flex flex-col md:flex-row gap-5 items-start">
+
+                <!-- 7 Feladat lista -->
+                <div id="steps-list" class="w-full md:w-3/4 flex flex-col gap-3"></div>
+
+                <!-- Jobb oldali Ünneplés doboz és segédlet -->
+                <div class="w-full md:w-1/4 flex flex-col gap-4 items-center">
+                    <div onclick="triggerCelebration()" class="cursor-pointer w-full bg-white p-3 rounded-2xl shadow-lg border-2 border-slate-200 hover:border-amber-400 transition transform hover:scale-105 text-center">
+                        <div class="bg-[#0f2942] rounded-xl h-28 flex flex-col items-center justify-center relative overflow-hidden p-2">
+                            <div class="text-2xl mb-1">🎆 🎇 🎆</div>
+                            <div class="w-9 h-14 bg-rose-600 rounded-t-md border-2 border-rose-300 flex items-center justify-end pr-1 shadow-inner">
+                                <div class="w-1.5 h-1.5 bg-amber-300 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="font-black text-slate-800 text-base mt-2 tracking-wide">
+                            ÜNNEPLÉS! 🎉
+                        </div>
+                        <div class="text-[11px] text-slate-500 font-bold">
+                            Kattints a tűzijátékhoz!
+                        </div>
+                    </div>
+
+                    <!-- Kiválasztott kártya kijelző (érintőképernyőhöz) -->
+                    <div id="selected-helper" class="hidden w-full bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 text-center shadow">
+                        <div class="text-xs font-extrabold text-amber-900">KIVÁLASZTOTT KÁRTYA:</div>
+                        <div id="selected-helper-name" class="text-base font-black text-slate-900 my-1"></div>
+                        <div class="text-[11px] text-amber-800">Most bökj rá arra a feladatra, ahová be szeretnéd tenni!</div>
+                        <button onclick="clearSelectedCard()" class="mt-2 text-xs bg-white px-2.5 py-1 rounded-full font-bold text-slate-700 shadow">Mégsem</button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MODAL 1: FŐMENÜ ÉS LOGOPÉDIAI HÍVÓKÉP-TÁR (+ ÚJ KÁRTYA) -->
+    <div id="library-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border-4 border-sky-500">
+            <div class="flex justify-between items-center border-b-2 border-slate-200 pb-3 mb-4">
+                <h2 class="text-2xl font-black text-slate-800">🏠 Főmenü – Magyar Logopédiai Hívóképek</h2>
+                <button onclick="closeModal('library-modal')" class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 font-black text-lg">✕</button>
+            </div>
+
+            <p class="text-sm text-slate-600 font-bold mb-3">
+                1. Válassz a beépített magyar logopédiai hívóképek közül (kattints rá, és bekerül a bal oldali sávba):
+            </p>
+            <div id="preset-gallery" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6"></div>
+
+            <div class="border-t-2 border-slate-200 pt-4">
+                <h3 class="text-lg font-black text-slate-800 mb-3">➕ Saját hívókártya vagy saját kép feltöltése</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div>
+                        <label class="text-xs font-extrabold text-slate-600">Hívóhang (pl. [SZ] vagy [R])</label>
+                        <input id="new-card-phoneme" type="text" placeholder="[SZ]" class="w-full mt-1 p-2.5 rounded-xl border border-slate-300 font-extrabold text-slate-800">
+                    </div>
+                    <div>
+                        <label class="text-xs font-extrabold text-slate-600">Hívókép neve és hangutánzó</label>
+                        <input id="new-card-word" type="text" placeholder="Kígyó – sz-sz-sz" class="w-full mt-1 p-2.5 rounded-xl border border-slate-300 font-bold text-slate-800">
+                    </div>
+                    <div>
+                        <label class="text-xs font-extrabold text-slate-600">Ikon / Emoji vagy Képfeltöltés</label>
+                        <div class="flex gap-2 mt-1">
+                            <input id="new-card-icon" type="text" placeholder="🐍" class="w-16 p-2.5 rounded-xl border border-slate-300 text-center text-xl">
+                            <input id="new-card-image" type="file" accept="image/*" class="text-xs w-full file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-sky-100 file:text-sky-700 file:font-bold">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 flex justify-end">
+                    <button onclick="addCustomCallingCard()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-5 py-2.5 rounded-xl shadow">
+                        ✔ Hozzáadás a kártyákhoz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: BEÁLLÍTÁSOK (Sorrend, eltűnés módja, színek, új lépés) -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border-4 border-amber-400">
+            <div class="flex justify-between items-center border-b-2 border-slate-200 pb-3 mb-4">
+                <h2 class="text-2xl font-black text-slate-800">⚙️ Beállítások és Testreszabás</h2>
+                <button onclick="closeModal('settings-modal')" class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 font-black text-lg">✕</button>
+            </div>
+
+            <!-- Kipipálás viselkedése -->
+            <div class="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <label class="block text-sm font-black text-slate-800 mb-2">Mi történjen, ha egy feladatot kipipál a gyermek?</label>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                        <input type="radio" name="completion-mode" value="fade" onchange="setCompletionMode('fade')" checked>
+                        <span>Elhalványul zöld pipával és „KÉSZ!” felirattal</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                        <input type="radio" name="completion-mode" value="hide" onchange="setCompletionMode('hide')">
+                        <span>Teljesen eltűnik (elmúlik) a listából</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Háttérszín választó -->
+            <div class="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <label class="block text-sm font-black text-slate-800 mb-2">Háttér és téma színe:</label>
+                <div class="flex gap-3">
+                    <button onclick="changeTheme('#f1f5f9', '#0f2942')" class="px-3 py-2 rounded-xl bg-slate-200 font-bold text-xs text-slate-800 border-2 border-slate-400">Klasszikus Kék</button>
+                    <button onclick="changeTheme('#fef9c3', '#1e3a8a')" class="px-3 py-2 rounded-xl bg-yellow-100 font-bold text-xs text-slate-800 border-2 border-yellow-400">Meleg Napfény</button>
+                    <button onclick="changeTheme('#dcfce7', '#065f46')" class="px-3 py-2 rounded-xl bg-emerald-100 font-bold text-xs text-slate-800 border-2 border-emerald-400">Nyugodt Erdei Zöld</button>
+                    <button onclick="changeTheme('#fae8ff', '#581c87')" class="px-3 py-2 rounded-xl bg-purple-100 font-bold text-xs text-slate-800 border-2 border-purple-400">Játékos Pasztell</button>
+                </div>
+            </div>
+
+            <!-- Feladatok sorrendje és szerkesztése -->
+            <div class="mb-4">
+                <h3 class="text-sm font-black text-slate-800 mb-2">Feladatok sorrendjének módosítása (⬆️ / ⬇️) vagy új lépés felvétele:</h3>
+                <div id="settings-steps-list" class="flex flex-col gap-2 mb-3"></div>
+                <div class="flex gap-2">
+                    <input id="new-step-title" type="text" placeholder="Új feladat neve (pl. TÜKÖRGYAKORLAT)" class="flex-1 p-2 rounded-xl border border-slate-300 font-bold text-sm">
+                    <input id="new-step-icon" type="text" placeholder="🪞" class="w-14 p-2 rounded-xl border border-slate-300 text-center">
+                    <button onclick="addNewScheduleStep()" class="bg-sky-600 text-white font-black px-4 py-2 rounded-xl text-sm">+ Hozzáadás</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ALAPÉRTELMEZETT MAGYAR LOGOPÉDIAI HÍVÓKÉPEK ---
+        const PRESET_CALLING_CARDS = [
+            { id: 'sz', phoneme: '[SZ]', word: 'Kígyó', soundText: 'sz-sz-sz, sziszeg a kígyó', icon: '🐍' },
+            { id: 'c',  phoneme: '[C]',  word: 'Cica',  soundText: 'c-c-c, cincog az egér, figyel a cica', icon: '🐱' },
+            { id: 's',  phoneme: '[S]',  word: 'Vonat', soundText: 's-s-s, zakatol a gőzmozdony', icon: '🚂' },
+            { id: 'r',  phoneme: '[R]',  word: 'Helikopter', soundText: 'r-r-r, berreg a helikopter', icon: '🚁' },
+            { id: 'zs', phoneme: '[ZS]', word: 'Méhecske', soundText: 'zs-zs-zs, zümmög a méhecske', icon: '🐝' },
+            { id: 'cs', phoneme: '[CS]', word: 'Kiscsibe', soundText: 'cs-cs-cs, csipog a kiscsibe', icon: '🐥' },
+            { id: 'z',  phoneme: '[Z]',  word: 'Cserebogár', soundText: 'z-z-z, zúg a bogár', icon: '🪲' },
+            { id: 'p',  phoneme: '[P]',  word: 'Buborék', soundText: 'p-p-p, kipukkad a buborék', icon: '🫧' },
+            { id: 'f',  phoneme: '[F]',  word: 'Szélfújás', soundText: 'f-f-f, fúj a szél', icon: '🌬️' },
+            { id: 'k',  phoneme: '[K]',  word: 'Kakas', soundText: 'k-k-k, kukurikú', icon: '🐓' },
+            { id: 'l',  phoneme: '[L]',  word: 'Lufi', soundText: 'l-l-l, lebeg a lufi', icon: '🎈' },
+            { id: 'm',  phoneme: '[M]',  word: 'Mackó', soundText: 'm-m-m, morog a mackó', icon: '🐻' }
+        ];
+
+        // --- ALAPÉRTELMEZETT 7 LÉPÉS ---
+        let scheduleSteps = [
+            { id: 1, title: 'KÖSZÖNÉS', leftIcon: '👋', rightIcon: '😊', completed: false, attachedCards: [] },
+            { id: 2, title: 'AJAKGYAKORLATOK', leftIcon: '👄', rightIcon: '😘', completed: false, attachedCards: [] },
+            { id: 3, title: 'NYELVTORNA', leftIcon: '👅', rightIcon: '😋', completed: false, attachedCards: [] },
+            { id: 4, title: 'SZÍVÓ-FÚJÓ', leftIcon: '💨', rightIcon: '🥤', completed: false, attachedCards: [] },
+            { id: 5, title: 'AUDITÍV DIFFERENCIÁLÁS', leftIcon: '👂', rightIcon: '🗣️🖼️', completed: false, attachedCards: [] },
+            { id: 6, title: 'JUTI JÁTÉK', leftIcon: '🎁', rightIcon: '🧸', completed: false, attachedCards: [] },
+            { id: 7, title: 'ELBÚCSÚZÁS', leftIcon: '🚪', rightIcon: '👋', completed: false, attachedCards: [] }
+        ];
+
+        let sidebarCards = [
+            PRESET_CALLING_CARDS[0], // [SZ] Kígyó
+            PRESET_CALLING_CARDS[1], // [C] Cica
+            PRESET_CALLING_CARDS[2], // [S] Vonat
+            PRESET_CALLING_CARDS[3]  // [R] Helikopter
+        ];
+
+        let completionMode = 'fade'; // 'fade' vagy 'hide'
+        let selectedCardForTap = null;
+
+        // --- MAGYAR HANGKIMENET (Web Speech API + Hangjelzés) ---
+        function speakHungarian(text) {
+            playChime(520, 740);
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'hu-HU';
+                msg.rate = 0.92;
+                window.speechSynthesis.speak(msg);
+            }
+        }
+
+        function playChime(freq1 = 440, freq2 = 880) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq1, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + 0.16);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.19);
+            } catch (e) {}
+        }
+
+        // --- FELÜLET KIRAJZOLÁSA ---
+        function renderSidebarCards() {
+            const container = document.getElementById('calling-cards-list');
+            container.innerHTML = '';
+            sidebarCards.forEach((card, index) => {
+                const isSelected = selectedCardForTap && selectedCardForTap.id === card.id;
+                const visual = card.imageUrl
+                    ? `<img src="${card.imageUrl}" class="w-10 h-10 rounded-lg object-cover border border-slate-300">`
+                    : `<span class="text-3xl">${card.icon}</span>`;
+
+                const el = document.createElement('div');
+                el.className = `sidebar-card bg-white rounded-2xl p-2.5 shadow-md flex items-center justify-between cursor-grab active:cursor-grabbing border-2 border-slate-200 ${isSelected ? 'selected-card-ring' : ''}`;
+                el.draggable = true;
+                el.ondragstart = (ev) => {
+                    ev.dataTransfer.setData('text/plain', JSON.stringify(card));
+                };
+                el.onclick = () => selectCardForTap(card);
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-black text-xl text-slate-900">${card.phoneme}</span>
+                        ${visual}
+                        <span class="text-xs font-extrabold text-slate-600">${card.word}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="event.stopPropagation(); speakHungarian('${card.soundText}')" title="Hang lejátszása" class="w-8 h-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center justify-center text-sm font-bold">
+                            🔊
+                        </button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function renderScheduleSteps() {
+            const container = document.getElementById('steps-list');
+            container.innerHTML = '';
+
+            // Megkeressük az első még nem teljesített feladatot (ez kapja a sárga aktív kiemelést)
+            const firstActiveIndex = scheduleSteps.findIndex(s => !s.completed);
+
+            scheduleSteps.forEach((step, idx) => {
+                const isActive = idx === firstActiveIndex;
+                let stateClass = 'bg-white border-2 border-slate-200';
+                if (step.completed) {
+                    stateClass = completionMode === 'hide' ? 'step-completed-hide' : 'step-completed-fade';
+                } else if (isActive) {
+                    stateClass = 'active-step-glow';
+                }
+
+                // Csatolt hívókártyák megjelenítése a feladaton belül
+                const badgesHtml = step.attachedCards.map((c, bIdx) => `
+                    <span onclick="event.stopPropagation(); speakHungarian('${c.soundText}')" class="inline-flex items-center gap-1 bg-sky-100 border border-sky-400 text-sky-900 font-black text-xs px-2.5 py-1 rounded-full shadow-sm hover:bg-sky-200">
+                        <span>${c.icon || '🔊'}</span>
+                        <span>${c.phoneme} ${c.word}</span>
+                        <button onclick="event.stopPropagation(); removeAttachedCard(${idx}, ${bIdx})" class="ml-1 text-rose-600 hover:text-rose-800 font-black">×</button>
+                    </span>
+                `).join('');
+
+                const row = document.createElement('div');
+                row.className = `step-card rounded-2xl px-4 py-3 shadow-md flex items-center justify-between cursor-pointer ${stateClass}`;
+                row.ondragover = (e) => e.preventDefault();
+                row.ondrop = (e) => {
+                    e.preventDefault();
+                    try {
+                        const card = JSON.parse(e.dataTransfer.getData('text/plain'));
+                        attachCardToStep(idx, card, e.clientX, e.clientY);
+                    } catch (err) {}
+                };
+                row.onclick = (e) => {
+                    if (selectedCardForTap) {
+                        attachCardToStep(idx, selectedCardForTap, e.clientX, e.clientY);
+                        clearSelectedCard();
+                    } else {
+                        toggleStepCompletion(idx, e);
+                    }
+                };
+
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 md:gap-4 flex-wrap">
+                        <span class="text-xl md:text-2xl font-black text-slate-600 w-6 text-center">${idx + 1}</span>
+                        <span class="text-2xl md:text-3xl">${step.leftIcon}</span>
+                        <span class="text-base md:text-xl font-black tracking-wide ${step.completed ? 'line-through text-slate-500' : 'text-slate-900'}">
+                            ${step.title}
+                        </span>
+                        <div class="flex flex-wrap gap-1.5">${badgesHtml}</div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl hidden sm:inline">${step.rightIcon || ''}</span>
+                        ${step.completed ? `
+                            <div class="flex flex-col items-center">
+                                <div class="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-xl shadow">✓</div>
+                                <span class="text-[11px] font-black text-emerald-700 tracking-wider mt-0.5">KÉSZ!</span>
+                            </div>
+                        ` : `
+                            <div class="w-9 h-9 rounded-full border-4 border-slate-300 bg-white hover:border-emerald-400 transition"></div>
+                        `}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            renderSettingsStepsList();
+        }
+
+        // --- FELADAT KIPIPÁLÁSA ÉS TŰZIJÁTÉK ---
+        function toggleStepCompletion(idx, event) {
+            const step = scheduleSteps[idx];
+            step.completed = !step.completed;
+
+            if (step.completed) {
+                playChime(500, 960);
+                if (event) {
+                    spawnSparkles(event.clientX, event.clientY);
+                }
+                const allDone = scheduleSteps.every(s => s.completed);
+                if (allDone) {
+                    setTimeout(triggerCelebration, 350);
+                }
+            } else {
+                playChime(350, 260);
+            }
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        // --- KÁRTYA HOZZÁRENDELÉSE FELADATHOZ ---
+        function selectCardForTap(card) {
+            selectedCardForTap = card;
+            speakHungarian(card.soundText);
+            document.getElementById('selected-helper').classList.remove('hidden');
+            document.getElementById('selected-helper-name').textContent = `${card.phoneme} – ${card.word}`;
+            renderSidebarCards();
+        }
+
+        function selectOrDragRepeatCard() {
+            const repeatCard = {
+                id: 'meg',
+                phoneme: 'MÉG ↺',
+                word: 'Ismétlés',
+                soundText: 'Csináljuk még egyszer!',
+                icon: '↺'
+            };
+            selectCardForTap(repeatCard);
+        }
+
+        function clearSelectedCard() {
+            selectedCardForTap = null;
+            document.getElementById('selected-helper').classList.add('hidden');
+            renderSidebarCards();
+        }
+
+        function attachCardToStep(stepIdx, card, x, y) {
+            scheduleSteps[stepIdx].attachedCards.push(card);
+            speakHungarian(card.soundText);
+            if (x && y) spawnSparkles(x, y);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function removeAttachedCard(stepIdx, cardIdx) {
+            scheduleSteps[stepIdx].attachedCards.splice(cardIdx, 1);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        // --- FŐMENÜ / KÉPTÁR FUNKCIÓK ---
+        function renderPresetGallery() {
+            const gallery = document.getElementById('preset-gallery');
+            gallery.innerHTML = '';
+            PRESET_CALLING_CARDS.forEach(card => {
+                const btn = document.createElement('button');
+                btn.className = 'p-3 rounded-2xl border-2 border-slate-200 hover:border-sky-500 bg-slate-50 hover:bg-sky-50 flex flex-col items-center gap-1 transition';
+                btn.onclick = () => {
+                    if (!sidebarCards.some(c => c.id === card.id)) {
+                        sidebarCards.push(card);
+                        saveToStorage();
+                        renderSidebarCards();
+                    }
+                    speakHungarian(card.soundText);
+                };
+                btn.innerHTML = `
+                    <span class="text-3xl">${card.icon}</span>
+                    <span class="font-black text-slate-900 text-sm">${card.phoneme} – ${card.word}</span>
+                    <span class="text-[11px] text-sky-700 font-bold">+ Betesz a sávba</span>
+                `;
+                gallery.appendChild(btn);
+            });
+        }
+
+        function addCustomCallingCard() {
+            const phonemeInput = document.getElementById('new-card-phoneme').value.trim() || '[HANG]';
+            const wordInput = document.getElementById('new-card-word').value.trim() || 'Saját kártya';
+            const iconInput = document.getElementById('new-card-icon').value.trim() || '⭐';
+            const fileInput = document.getElementById('new-card-image');
+
+            const finalizeCard = (imgDataUrl) => {
+                const newCard = {
+                    id: 'custom_' + Date.now(),
+                    phoneme: phonemeInput,
+                    word: wordInput,
+                    soundText: wordInput,
+                    icon: iconInput,
+                    imageUrl: imgDataUrl || null
+                };
+                sidebarCards.push(newCard);
+                saveToStorage();
+                renderSidebarCards();
+                closeModal('library-modal');
+            };
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => finalizeCard(e.target.result);
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                finalizeCard(null);
+            }
+        }
+
+        // --- BEÁLLÍTÁSOK FUNKCIÓK ---
+        function setCompletionMode(mode) {
+            completionMode = mode;
+            renderScheduleSteps();
+        }
+
+        function changeTheme(panelColor, headerColor) {
+            document.getElementById('schedule-bg').style.backgroundColor = panelColor;
+            document.getElementById('app-header').style.backgroundColor = headerColor;
+        }
+
+        function renderSettingsStepsList() {
+            const list = document.getElementById('settings-steps-list');
+            if (!list) return;
+            list.innerHTML = '';
+            scheduleSteps.forEach((step, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-slate-100 px-3 py-2 rounded-xl border border-slate-200';
+                item.innerHTML = `
+                    <span class="font-black text-sm text-slate-800">${idx + 1}. ${step.leftIcon} ${step.title}</span>
+                    <div class="flex gap-1.5">
+                        <button onclick="moveStep(${idx}, -1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬆️</button>
+                        <button onclick="moveStep(${idx}, 1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬇️</button>
+                        <button onclick="deleteStep(${idx})" class="px-2 py-1 bg-rose-100 text-rose-700 rounded shadow text-xs font-bold">🗑️</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function moveStep(idx, dir) {
+            const target = idx + dir;
+            if (target < 0 || target >= scheduleSteps.length) return;
+            const temp = scheduleSteps[idx];
+            scheduleSteps[idx] = scheduleSteps[target];
+            scheduleSteps[target] = temp;
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function deleteStep(idx) {
+            scheduleSteps.splice(idx, 1);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function addNewScheduleStep() {
+            const title = document.getElementById('new-step-title').value.trim().toUpperCase();
+            const icon = document.getElementById('new-step-icon').value.trim() || '⭐';
+            if (!title) return;
+            scheduleSteps.push({
+                id: Date.now(),
+                title: title,
+                leftIcon: icon,
+                rightIcon: '✨',
+                completed: false,
+                attachedCards: []
+            });
+            document.getElementById('new-step-title').value = '';
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function resetAllSteps() {
+            scheduleSteps.forEach(s => s.completed = false);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        // --- ÜNNEPLÉS ÉS CSILLÁMOK ---
+        function triggerCelebration() {
+            speakHungarian('Ügyes voltál, minden feladat elkészült! Következik az ünneplés!');
+            const end = Date.now() + 3500;
+            (function frame() {
+                confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0, y: 0.8 } });
+                confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1, y: 0.8 } });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            })();
+        }
+
+        const canvas = document.getElementById('sparkle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function spawnSparkles(x, y) {
+            for (let i = 0; i < 28; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 7,
+                    vy: (Math.random() - 0.8) * 7,
+                    size: Math.random() * 6 + 3,
+                    alpha: 1,
+                    color: ['#facc15', '#4ade80', '#38bdf8', '#f43f5e'][Math.floor(Math.random() * 4)]
+                });
+            }
+        }
+
+        function animateSparkles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles = particles.filter(p => p.alpha > 0.02);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15;
+                p.alpha -= 0.025;
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+            requestAnimationFrame(animateSparkles);
+        }
+        animateSparkles();
+
+        // --- MODAL, MENTÉS ÉS MEGOSZTÁS ---
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function shareSchedule() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('🔗 A foglalkozás megosztható linkjét kimásoltam a vágólapra:\n' + url);
+            }).catch(() => {
+                prompt('Másold ki az alábbi megosztási linket:', url);
+            });
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem('logopedia_foglalkozas_state_v2', JSON.stringify({
+                    scheduleSteps, sidebarCards, completionMode
+                }));
+            } catch (e) {}
+        }
+
+        function loadFromStorage() {
+            try {
+                const raw = localStorage.getItem('logopedia_foglalkozas_state_v2');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.scheduleSteps) scheduleSteps = parsed.scheduleSteps;
+                    if (parsed.sidebarCards) sidebarCards = parsed.sidebarCards;
+                    if (parsed.completionMode) completionMode = parsed.completionMode;
+                }
+            } catch (e) {}
+        }
+
+        window.onload = () => {
+            loadFromStorage();
+            renderSidebarCards();
+            renderScheduleSteps();
+            renderPresetGallery();
+        };
+    </script>
+</body>
+</html>
