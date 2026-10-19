@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logopédiai Foglalkozás – Interaktív Menetrend</title>
+    <title>Logopédiai Foglalkozás – AAC Interaktív Menetrend</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
@@ -14,10 +14,10 @@
             -webkit-user-select: none;
         }
         .step-card {
-            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .step-completed-fade {
-            opacity: 0.55;
+            opacity: 0.5;
             background-color: #e2e8f0 !important;
             border-color: #cbd5e1 !important;
         }
@@ -33,58 +33,84 @@
             overflow: hidden;
         }
         .active-step-glow {
-            background: linear-gradient(90deg, #fef08a 0%, #fde047 100%) !important;
-            border: 3px solid #eab308 !important;
-            box-shadow: 0 0 20px rgba(250, 204, 21, 0.55);
+            background: linear-gradient(90deg, #fef9c3 0%, #fef08a 100%) !important;
+            border: 4px solid #eab308 !important;
+            box-shadow: 0 0 22px rgba(250, 204, 21, 0.6);
         }
-        .sidebar-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .aac-btn {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        .sidebar-card:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+        .aac-btn:active {
+            transform: scale(0.93);
         }
         .selected-card-ring {
             outline: 4px solid #facc15;
-            transform: scale(1.04);
+            transform: scale(1.03);
         }
+        /* Egyedi görgetősáv */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(15,41,66,0.3); border-radius: 10px; }
     </style>
 </head>
-<body id="app-body" class="bg-slate-900 min-h-screen flex flex-col items-center justify-start p-2 md:p-5">
+<body id="app-body" class="bg-slate-900 min-h-screen flex flex-col items-center justify-start p-2 md:p-4">
 
     <canvas id="sparkle-canvas" class="pointer-events-none fixed inset-0 w-full h-full z-50"></canvas>
 
-    <div class="w-full max-w-6xl bg-[#f1f5f9] rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-800 flex flex-col">
+    <!-- INFORMÁCIÓS (?) POPUP BUBORÉK -->
+    <div id="info-popover" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4" onclick="closeInfoPopover()">
+        <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border-4 border-sky-500 text-center" onclick="event.stopPropagation()">
+            <div id="info-popover-icon" class="text-6xl mb-2">ℹ️</div>
+            <h3 id="info-popover-title" class="text-lg font-black text-slate-800 mb-1"></h3>
+            <p id="info-popover-desc" class="text-sm font-bold text-slate-600 bg-slate-100 p-3 rounded-2xl"></p>
+            <button onclick="closeInfoPopover()" class="mt-4 bg-sky-600 hover:bg-sky-500 text-white font-black text-xs px-6 py-2 rounded-full shadow">BEZÁRÁS</button>
+        </div>
+    </div>
+
+    <!-- GYERMEK AAC VISSZAJELZŐ BANNER (Amikor megnyom egy igény-kártyát) -->
+    <div id="aac-feedback-banner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-300 border-4 border-slate-900 rounded-3xl px-6 py-3 shadow-2xl flex items-center gap-4 animate-bounce">
+        <span id="aac-banner-icon" class="text-6xl"></span>
+        <div>
+            <div class="text-[10px] font-black uppercase text-slate-700 tracking-wider">A gyermek jelzése:</div>
+            <div id="aac-banner-text" class="text-2xl font-black text-slate-900"></div>
+        </div>
+        <button onclick="hideAacBanner()" class="ml-2 w-8 h-8 rounded-full bg-slate-900 text-white font-black text-xs">✕</button>
+    </div>
+
+    <div class="w-full max-w-7xl bg-[#f1f5f9] rounded-3xl shadow-2xl overflow-hidden border-4 border-slate-800 flex flex-col">
 
         <!-- FEJLÉC -->
-        <header id="app-header" class="bg-[#0f2942] text-white px-4 py-3 flex items-center justify-between relative">
-            <div class="flex items-center gap-3">
-                <button onclick="openModal('library-modal')" title="Főmenü és Logopédiai Képtár" class="w-11 h-11 rounded-full bg-[#1da1f2] hover:bg-sky-400 flex items-center justify-center shadow-md transition transform active:scale-95">
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/>
-                    </svg>
+        <header id="app-header" class="bg-[#0f2942] text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 relative">
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('library-modal')" title="Hívókép-tár és Tömeges Képfeltöltés" class="w-10 h-10 rounded-full bg-[#1da1f2] hover:bg-sky-400 flex items-center justify-center shadow-md transition active:scale-95 text-xl">
+                    🖼️
                 </button>
-                <button onclick="resetAllSteps()" title="Új foglalkozás indítása" class="bg-slate-700 hover:bg-slate-600 text-xs font-extrabold px-3 py-2 rounded-full transition">
+                <button onclick="openModal('tasks-modal')" title="Feladatok bővítése, sorrendje és képfeltöltés" class="bg-emerald-600 hover:bg-emerald-500 text-[11px] font-extrabold px-3 py-2 rounded-full transition flex items-center gap-1">
+                    <span>📋 FELADATOK BŐVÍTÉSE</span>
+                </button>
+                <button onclick="resetAllSteps()" title="Új foglalkozás indítása" class="bg-slate-700 hover:bg-slate-600 text-[11px] font-extrabold px-3 py-2 rounded-full transition">
                     ↺ ALAPHELYZET
                 </button>
             </div>
 
-            <h1 id="main-title" class="text-xl md:text-3xl font-black tracking-wider uppercase text-center">
-                LOGOPÉDIAI FOGLALKOZÁS
+            <h1 id="main-title" class="text-sm md:text-lg font-black tracking-wider uppercase text-center text-sky-100">
+                LOGOPÉDIAI FOGLALKOZÁS – VIZUÁLIS MENETREND
             </h1>
 
             <div class="flex items-center gap-2">
-                <button onclick="shareSchedule()" class="bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-xs md:text-sm px-3.5 py-2 rounded-full shadow flex items-center gap-1.5 transition active:scale-95">
-                    <span>MEGOSZTÁS</span>
+                <button onclick="openModal('timer-modal')" class="bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-[11px] px-3 py-2 rounded-full shadow flex items-center gap-1 transition active:scale-95">
+                    <span>⏱️ IDŐKERETEK</span>
+                </button>
+                <button onclick="shareSchedule()" class="bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-[11px] px-3 py-2 rounded-full shadow flex items-center gap-1 transition active:scale-95">
                     <span>🔗</span>
                 </button>
-                <button onclick="openModal('settings-modal')" class="bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-xs md:text-sm px-3.5 py-2 rounded-full shadow flex items-center gap-1.5 transition active:scale-95">
-                    <span>BEÁLLÍTÁSOK</span>
+                <button onclick="openModal('settings-modal')" class="bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-[11px] px-3 py-2 rounded-full shadow flex items-center gap-1 transition active:scale-95">
                     <span>⚙️</span>
                 </button>
             </div>
         </header>
 
+        <!-- SZÍNES ELVÁLASZTÓ CSÍK -->
         <div class="h-1.5 w-full flex">
             <div class="w-1/4 bg-sky-400"></div>
             <div class="w-1/4 bg-amber-400"></div>
@@ -92,151 +118,360 @@
             <div class="w-1/4 bg-rose-500"></div>
         </div>
 
-        <!-- TARTALMI RÉSZ -->
-        <div class="grid grid-cols-1 md:grid-cols-12 min-h-[620px]">
+        <!-- GYERMEK AAC IGÉNY- ÉS VISSZAJELZŐ SÁV (8 ÓRIÁSGOMB KÉRDŐJELLEL) -->
+        <section class="bg-slate-200/90 border-b-2 border-slate-300 px-3 py-2.5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                    👇 Gyermek kommunikációs jelzései (Érintsd meg a képet! A ? gombbal megjelenik a felnőtt magyarázat)
+                </span>
+            </div>
+            <div id="aac-buttons-grid" class="grid grid-cols-4 sm:grid-cols-8 gap-2"></div>
+        </section>
 
-            <!-- BAL OLDALI SÁV: BŐVÍTHETŐ KÁRTYÁK -->
-            <aside class="md:col-span-3 bg-gradient-to-b from-[#0ea5e9] to-[#0369a1] p-4 flex flex-col gap-3 border-r-2 border-slate-200">
-                <div class="bg-[#0c4a6e]/60 text-white text-center font-extrabold text-sm py-2 px-3 rounded-full tracking-wide shadow-inner">
-                    BŐVÍTHETŐ KÁRTYÁK
+        <!-- FŐ TARTALMI RÉSZ -->
+        <div class="grid grid-cols-1 md:grid-cols-12 min-h-[600px]">
+
+            <!-- BAL OLDALI SÁV: BŐVÍTHETŐ HÍVÓKÁRTYÁK ÉS KÉPEK -->
+            <aside class="md:col-span-3 bg-gradient-to-b from-[#0ea5e9] to-[#0369a1] p-3 flex flex-col gap-2.5 border-r-2 border-slate-200">
+                <div class="bg-[#0c4a6e]/70 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-full tracking-wide shadow-inner">
+                    HANGOK ÉS KÉPEK SÁVJA
                 </div>
-                <p class="text-[11px] text-sky-100 text-center -mt-1">
-                    Kattints a 🎙️-re a saját hangod rögzítéséhez! A piros ✕-el törölhető.
+                <p class="text-[10px] text-sky-100 text-center leading-tight">
+                    Bökj a kártyára, majd a feladatra! 🎙️ = saját hang, ✕ = törlés.
                 </p>
 
-                <div id="calling-cards-list" class="flex flex-col gap-2.5 overflow-y-auto max-h-[430px] pr-1"></div>
+                <div id="calling-cards-list" class="flex flex-col gap-2 overflow-y-auto max-h-[440px] pr-1"></div>
 
-                <div class="mt-auto flex flex-col gap-2 pt-2 border-t border-sky-400/40">
-                    <button onclick="selectOrDragRepeatCard()" id="repeat-card-btn" class="sidebar-card bg-white text-slate-900 font-black py-3 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 text-lg border-2 border-slate-200">
-                        <span>MÉG</span>
-                        <span class="text-2xl">↺</span>
-                    </button>
-                    <button onclick="openModal('library-modal')" class="sidebar-card bg-white hover:bg-amber-50 text-slate-900 font-black py-3 px-4 rounded-2xl shadow-md flex items-center justify-center gap-2 text-base border-2 border-slate-200">
-                        <span>+ ÚJ KÁRTYA</span>
+                <div class="mt-auto flex flex-col gap-1.5 pt-2 border-t border-sky-400/40">
+                    <button onclick="openModal('library-modal')" class="bg-white hover:bg-amber-50 text-slate-900 font-black py-2.5 px-3 rounded-2xl shadow-md flex items-center justify-center gap-1.5 text-xs border-2 border-slate-200">
+                        <span class="text-xl">➕</span>
+                        <span>ÚJ KÉP / TÖMEGES FELTÖLTÉS</span>
                     </button>
                 </div>
             </aside>
 
-            <!-- JOBB OLDALI RÉSZ: 7 LÉPÉSES MENETREND -->
-            <main id="schedule-bg" class="md:col-span-9 bg-[#f1f5f9] p-4 md:p-6 flex flex-col md:flex-row gap-5 items-start">
-
-                <div id="steps-list" class="w-full md:w-3/4 flex flex-col gap-3"></div>
-
-                <div class="w-full md:w-1/4 flex flex-col gap-4 items-center">
-                    <div onclick="triggerCelebration()" class="cursor-pointer w-full bg-white p-3 rounded-2xl shadow-lg border-2 border-slate-200 hover:border-amber-400 transition transform hover:scale-105 text-center">
-                        <div class="bg-[#0f2942] rounded-xl h-28 flex flex-col items-center justify-center relative overflow-hidden p-2">
-                            <div class="text-2xl mb-1">🎆 🎇 🎆</div>
-                            <div class="w-9 h-14 bg-rose-600 rounded-t-md border-2 border-rose-300 flex items-center justify-end pr-1 shadow-inner">
-                                <div class="w-1.5 h-1.5 bg-amber-300 rounded-full"></div>
+            <!-- KÖZÉPSŐ RÉSZ: FÜGGŐLEGES MENETREND (NAGY IKONOK, KIS FELIRATOK, EGYÉNI IDŐZÍTŐK) -->
+            <main id="schedule-bg" class="md:col-span-6 bg-[#f1f5f9] p-3 md:p-5 flex flex-col gap-3">
+                
+                <!-- HIBAÜZENET SÁV, HA AZ IDŐKERETEK NEM EGYEZNEK -->
+                <div id="time-error-alert" class="hidden bg-rose-100 border-3 border-rose-500 text-rose-900 p-3 rounded-2xl shadow-md">
+                    <div class="flex items-start gap-2.5">
+                        <span class="text-3xl">⚠️</span>
+                        <div class="flex-1">
+                            <div class="text-xs font-black uppercase text-rose-800">Időkeret eltérés figyelmeztetés!</div>
+                            <p id="time-error-text" class="text-[11px] font-bold mt-0.5 leading-snug"></p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button onclick="syncMainTimerToTasks()" class="bg-rose-700 hover:bg-rose-600 text-white text-[10px] font-black px-3 py-1.5 rounded-xl shadow">
+                                    🔄 Főoldali Time Timer igazítása a feladatok összegéhez
+                                </button>
+                                <button onclick="openModal('timer-modal')" class="bg-white hover:bg-slate-100 text-rose-800 border border-rose-400 text-[10px] font-black px-3 py-1.5 rounded-xl">
+                                    ✏️ Feladatok idejének javítása egyesével
+                                </button>
                             </div>
                         </div>
-                        <div class="font-black text-slate-800 text-base mt-2 tracking-wide">
-                            ÜNNEPLÉS! 🎉
-                        </div>
-                        <div class="text-[11px] text-slate-500 font-bold">
-                            Kattints a tűzijátékhoz!
-                        </div>
-                    </div>
-
-                    <div id="selected-helper" class="hidden w-full bg-amber-100 border-2 border-amber-400 rounded-2xl p-3 text-center shadow">
-                        <div class="text-xs font-extrabold text-amber-900">KIVÁLASZTOTT KÁRTYA:</div>
-                        <div id="selected-helper-name" class="text-base font-black text-slate-900 my-1"></div>
-                        <div class="text-[11px] text-amber-800">Most bökj rá arra a feladatra, ahová be szeretnéd tenni!</div>
-                        <button onclick="clearSelectedCard()" class="mt-2 text-xs bg-white px-2.5 py-1 rounded-full font-bold text-slate-700 shadow">Mégsem</button>
                     </div>
                 </div>
 
+                <!-- KIVÁLASZTOTT KÁRTYA SEGÉD -->
+                <div id="selected-helper" class="hidden w-full bg-amber-100 border-2 border-amber-400 rounded-2xl p-2.5 flex items-center justify-between shadow">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">👆</span>
+                        <div>
+                            <div class="text-[10px] font-extrabold text-amber-900">KIVÁLASZTOTT KÁRTYA: <span id="selected-helper-name" class="font-black text-slate-900"></span></div>
+                            <div class="text-[10px] text-amber-800">Bökj arra a feladatra, ahová be szeretnéd illeszteni!</div>
+                        </div>
+                    </div>
+                    <button onclick="clearSelectedCard()" class="text-[10px] bg-white px-2.5 py-1 rounded-full font-bold text-slate-700 shadow">Mégsem</button>
+                </div>
+
+                <!-- LENTRŐL LEFELÉ HALADÓ FELADATSOR -->
+                <div id="steps-list" class="w-full flex flex-col gap-3"></div>
+
             </main>
+
+            <!-- JOBB OLDALI SÁV: FŐOLDALI TIME TIMER ÉS JUTALOM TŰZIJÁTÉK -->
+            <aside class="md:col-span-3 bg-slate-100 border-l-2 border-slate-200 p-3.5 flex flex-col items-center gap-4">
+
+                <!-- FŐOLDALI TIME TIMER KÁRTYA -->
+                <div class="w-full bg-white rounded-3xl p-4 shadow-lg border-2 border-slate-200 flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between mb-1">
+                        <span class="text-[11px] font-black text-slate-700 uppercase tracking-wider">⏱️ TIME TIMER (ÓRAKERET)</span>
+                        <button onclick="showInfoPopover('⏱️', 'Főoldali Time Timer', 'A piros korong vizuálisan mutatja a gyermeknek, mennyi idő van még hátra a teljes foglalkozásból. A főoldali időkeretnek meg kell egyeznie a feladatok összesített idejével!')" class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 font-black text-[10px] flex items-center justify-center">?</button>
+                    </div>
+
+                    <!-- VIZUÁLIS PIROS TIME TIMER TÁRCSA (SVG) -->
+                    <div class="relative w-44 h-44 my-2 flex items-center justify-center">
+                        <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90 rounded-full border-4 border-slate-800 bg-slate-50 shadow-inner">
+                            <circle cx="50" cy="50" r="45" fill="#f8fafc" />
+                            <!-- Piros fogyó körcikk -->
+                            <path id="global-timer-sector" d="" fill="#ef4444" />
+                            <!-- Óra osztások -->
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="2 5.85" />
+                            <circle cx="50" cy="50" r="6" fill="#0f172a" />
+                        </svg>
+                    </div>
+
+                    <!-- digitális kijelző felnőttnek -->
+                    <div id="global-timer-display" class="text-xl font-black text-slate-800 tracking-wider">
+                        30:00
+                    </div>
+                    <div id="global-timer-summary" class="text-[10px] font-bold text-slate-500 mb-2 text-center">
+                        Beállítva: 30 perc | Feladatok összege: 30 perc
+                    </div>
+
+                    <!-- FŐOLDALI IDŐZÍTŐ BEÁLLÍTÁSA ÉS VEZÉRLÉSE -->
+                    <div class="w-full bg-slate-50 p-2.5 rounded-2xl border border-slate-200 mb-2">
+                        <label class="block text-[10px] font-extrabold text-slate-600 text-center mb-1">
+                            Főoldali össz-időkeret (perc):
+                        </label>
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="adjustMainTimerMinutes(-5)" class="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-black text-xs">-5</button>
+                            <button onclick="adjustMainTimerMinutes(-1)" class="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-black text-xs">-1</button>
+                            <input id="main-timer-input" type="number" min="1" max="180" value="30" onchange="setMainTimerFromInput(this.value)" class="w-14 text-center font-black text-sm p-1 rounded-lg border border-slate-300">
+                            <button onclick="adjustMainTimerMinutes(1)" class="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-black text-xs">+1</button>
+                            <button onclick="adjustMainTimerMinutes(5)" class="w-7 h-7 rounded-lg bg-slate-200 hover:bg-slate-300 font-black text-xs">+5</button>
+                        </div>
+                    </div>
+
+                    <div class="flex w-full gap-2">
+                        <button id="global-start-btn" onclick="toggleGlobalTimer()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow transition">
+                            ▶️ INDÍTÁS
+                        </button>
+                        <button onclick="stopAndResetGlobalTimer()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-black text-xs py-2.5 px-3 rounded-xl transition" title="Bármikor leállítható és alaphelyzetbe állítható">
+                            ⏹️ STOP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ÜNNEPLÉS / JUTALOM GOMB -->
+                <div onclick="triggerCelebration()" class="cursor-pointer w-full bg-white p-3 rounded-3xl shadow-lg border-2 border-slate-200 hover:border-amber-400 transition transform hover:scale-102 text-center">
+                    <div class="bg-[#0f2942] rounded-2xl h-28 flex flex-col items-center justify-center relative overflow-hidden p-2">
+                        <div class="text-5xl mb-1">🎆🎁🎆</div>
+                    </div>
+                    <div class="font-black text-slate-800 text-xs mt-2 tracking-wide">
+                        ÜNNEPLÉS / TŰZIJÁTÉK! 🎉
+                    </div>
+                </div>
+
+            </aside>
+
         </div>
     </div>
 
-    <!-- MODAL 1: FŐMENÜ ÉS LOGOPÉDIAI HÍVÓKÉP-TÁR -->
+    <!-- ================================================================= -->
+    <!-- MODAL 1: HÍVÓKÉP-TÁR ÉS EGYÉNI / TÖMEGES KÉPFELTÖLTÉS A SÁVBA      -->
+    <!-- ================================================================= -->
     <div id="library-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border-4 border-sky-500">
             <div class="flex justify-between items-center border-b-2 border-slate-200 pb-3 mb-4">
-                <h2 class="text-2xl font-black text-slate-800">🏠 Főmenü – Magyar Logopédiai Hívóképek</h2>
+                <h2 class="text-xl font-black text-slate-800">🖼️ Hívókép-tár & Képfeltöltés (Egyéni vagy Tömeges)</h2>
                 <button onclick="closeModal('library-modal')" class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 font-black text-lg">✕</button>
             </div>
 
-            <p class="text-sm text-slate-600 font-bold mb-3">
-                1. Válassz a hivatalos magyar logopédiai hívóképek közül:
-            </p>
-            <div id="preset-gallery" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6"></div>
+            <!-- TÖMEGES KÉPFELTÖLTÉS SZEKCIÓ -->
+            <div class="bg-sky-50 border-2 border-sky-300 rounded-2xl p-4 mb-5">
+                <h3 class="text-sm font-black text-sky-900 mb-1">📂 1. Tömeges (vagy egyéni) képfeltöltés a bal oldali sávba</h3>
+                <p class="text-xs text-sky-800 mb-3">
+                    Egyszerre akár több (5-20 db) saját képet is kijelölhetsz a gépeden! Minden kiválasztott képből automatikusan külön kártya készül, amit bármelyik feladathoz hozzárendelhetsz.
+                </p>
+                <input id="bulk-cards-upload" type="file" accept="image/*" multiple onchange="handleBulkCardUpload(event)" class="text-xs w-full file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:bg-sky-600 file:text-white file:font-black hover:file:bg-sky-500 cursor-pointer">
+            </div>
 
-            <div class="border-t-2 border-slate-200 pt-4">
-                <h3 class="text-lg font-black text-slate-800 mb-3">➕ Saját hívókártya létrehozása</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            <!-- EGYÉNI KÁRTYA LÉTREHOZÁSA -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-5">
+                <h3 class="text-sm font-black text-slate-800 mb-2">➕ 2. Egyéni hívókártya létrehozása felirattal</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="text-xs font-extrabold text-slate-600">Hívóhang (pl. [SZ] vagy [R])</label>
-                        <input id="new-card-phoneme" type="text" placeholder="[SZ]" class="w-full mt-1 p-2.5 rounded-xl border border-slate-300 font-extrabold text-slate-800">
+                        <label class="text-[11px] font-extrabold text-slate-600">Hívóhang / Jelzés (pl. [SZ])</label>
+                        <input id="new-card-phoneme" type="text" placeholder="[SZ]" class="w-full mt-1 p-2 rounded-xl border border-slate-300 font-extrabold text-sm">
                     </div>
                     <div>
-                        <label class="text-xs font-extrabold text-slate-600">Hívókép neve</label>
-                        <input id="new-card-word" type="text" placeholder="Kígyó" class="w-full mt-1 p-2.5 rounded-xl border border-slate-300 font-bold text-slate-800">
+                        <label class="text-[11px] font-extrabold text-slate-600">Kép neve (felnőttnek)</label>
+                        <input id="new-card-word" type="text" placeholder="Kígyó" class="w-full mt-1 p-2 rounded-xl border border-slate-300 font-bold text-sm">
                     </div>
                     <div>
-                        <label class="text-xs font-extrabold text-slate-600">Ikon vagy Kép</label>
+                        <label class="text-[11px] font-extrabold text-slate-600">Emoji vagy Képfájl</label>
                         <div class="flex gap-2 mt-1">
-                            <input id="new-card-icon" type="text" placeholder="🐍" class="w-16 p-2.5 rounded-xl border border-slate-300 text-center text-xl">
-                            <input id="new-card-image" type="file" accept="image/*" class="text-xs w-full file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-sky-100 file:text-sky-700 file:font-bold">
+                            <input id="new-card-icon" type="text" placeholder="🐍" class="w-14 p-2 rounded-xl border border-slate-300 text-center text-xl">
+                            <input id="new-card-image" type="file" accept="image/*" class="text-[11px] w-full file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:bg-slate-200 file:font-bold">
                         </div>
                     </div>
                 </div>
                 <div class="mt-3 flex justify-end">
-                    <button onclick="addCustomCallingCard()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-5 py-2.5 rounded-xl shadow">
-                        ✔ Hozzáadás a kártyákhoz
+                    <button onclick="addCustomCallingCard()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-4 py-2 rounded-xl shadow">
+                        ✔ Hozzáadás a sávhoz
                     </button>
                 </div>
+            </div>
+
+            <!-- BEÉPÍTETT MAGYAR LOGOPÉDIAI HÍVÓKÉPEK -->
+            <p class="text-xs text-slate-600 font-black mb-2">
+                3. Gyorsválasztó – Alap magyar logopédiai hívóképek:
+            </p>
+            <div id="preset-gallery" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- MODAL 2: FELADATBANK (13 ELŐKÉSZÍTŐ FELADAT + TÖMEGES FELTÖLTÉS)   -->
+    <!-- ================================================================= -->
+    <div id="tasks-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border-4 border-emerald-500">
+            <div class="flex justify-between items-center border-b-2 border-slate-200 pb-3 mb-4">
+                <h2 class="text-xl font-black text-slate-800">📋 Artikulációs Előkészítő és Terápiás Feladatbank</h2>
+                <button onclick="closeModal('tasks-modal')" class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 font-black text-lg">✕</button>
+            </div>
+
+            <!-- 13 BEÉPÍTETT JAVASOLT FELADAT KI-BE KAPCSOLÁSA -->
+            <div class="mb-5">
+                <h3 class="text-sm font-black text-slate-800 mb-1">1. Válaszd ki, mely feladatok jelenjenek meg a menetrendben!</h3>
+                <p class="text-xs text-slate-500 mb-3">A zölddel kijelölt feladatok aktívak. Kattints bármelyikre a hozzáadáshoz vagy kivételhez!</p>
+                <div id="task-bank-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5"></div>
+            </div>
+
+            <!-- SAJÁT FELADATOK LÉTREHOZÁSA EGYÉNI VAGY TÖMEGES KÉPFELTÖLTÉSSEL -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t-2 border-slate-200 pt-4 mb-5">
+                <div class="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4">
+                    <h3 class="text-xs font-black text-emerald-950 mb-1">📂 Tömeges feladat-létrehozás képfájlokból</h3>
+                    <p class="text-[11px] text-emerald-800 mb-2">
+                        Tölts fel egyszerre több saját készítésű háttérfájlt/rajzot, és mindegyikből azonnal önálló menetrendi lépés lesz!
+                    </p>
+                    <input type="file" accept="image/*" multiple onchange="handleBulkTaskUpload(event)" class="text-xs w-full file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-emerald-600 file:text-white file:font-black cursor-pointer">
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <h3 class="text-xs font-black text-slate-800 mb-2">➕ Egyedi új feladat hozzáadása</h3>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input id="new-step-title" type="text" placeholder="Feladat neve (pl. TÜKÖR)" class="p-2 rounded-xl border border-slate-300 font-bold text-xs">
+                        <input id="new-step-desc" type="text" placeholder="Magyarázat a ? gombhoz" class="p-2 rounded-xl border border-slate-300 text-xs">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input id="new-step-icon" type="text" placeholder="🪞" class="w-12 p-2 rounded-xl border border-slate-300 text-center text-lg">
+                        <input id="new-step-image" type="file" accept="image/*" class="text-[10px] flex-1">
+                        <input id="new-step-duration" type="number" min="1" max="15" value="5" class="w-14 p-2 rounded-xl border border-slate-300 text-xs font-black text-center" title="Időtartam (1-15 perc)">
+                        <button onclick="addNewScheduleStep()" class="bg-emerald-600 text-white font-black px-3 py-2 rounded-xl text-xs">+ Hozzáad</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AKTÍV FELADATOK SORRENDJE ÉS KÉPCSERÉJE -->
+            <div class="border-t-2 border-slate-200 pt-4">
+                <h3 class="text-sm font-black text-slate-800 mb-2">2. Aktív feladatok sorrendje, egyéni képcsere és időkeret (1–15 perc):</h3>
+                <div id="settings-steps-list" class="flex flex-col gap-2"></div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: BEÁLLÍTÁSOK -->
-    <div id="settings-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border-4 border-amber-400">
+    <!-- ================================================================= -->
+    <!-- MODAL 3: IDŐKERETEK ÉS TIME TIMER SZINKRONIZÁLÓ                    -->
+    <!-- ================================================================= -->
+    <div id="timer-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border-4 border-rose-500">
             <div class="flex justify-between items-center border-b-2 border-slate-200 pb-3 mb-4">
-                <h2 class="text-2xl font-black text-slate-800">⚙️ Beállítások és Testreszabás</h2>
+                <h2 class="text-xl font-black text-slate-800">⏱️ Időkeretek Beállítása és Ellenőrzése</h2>
+                <button onclick="closeModal('timer-modal')" class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 font-black text-lg">✕</button>
+            </div>
+
+            <div class="bg-slate-100 p-4 rounded-2xl mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-2 border-slate-300">
+                <div>
+                    <div class="text-xs font-black text-slate-700">1. FELADATOK ÖSSZESÍTETT IDEJE:</div>
+                    <div id="modal-tasks-sum" class="text-2xl font-black text-sky-700">30 perc</div>
+                </div>
+                <div class="text-2xl font-black text-slate-400">⇔</div>
+                <div>
+                    <div class="text-xs font-black text-slate-700">2. FŐOLDALI TIME TIMER KERETE:</div>
+                    <div class="flex items-center gap-2 mt-1">
+                        <input id="modal-main-timer-input" type="number" min="1" max="180" value="30" onchange="setMainTimerFromInput(this.value)" class="w-20 p-1.5 rounded-xl border-2 border-slate-400 font-black text-lg text-center">
+                        <span class="font-black text-sm">perc</span>
+                    </div>
+                </div>
+                <button onclick="syncMainTimerToTasks()" class="bg-sky-600 hover:bg-sky-500 text-white font-black text-xs px-3.5 py-2.5 rounded-xl shadow">
+                    🔄 Legyen egyenlő!
+                </button>
+            </div>
+
+            <div id="modal-timer-error" class="hidden bg-rose-100 border-2 border-rose-500 text-rose-900 p-3 rounded-2xl mb-4 text-xs font-bold"></div>
+
+            <h3 class="text-xs font-black uppercase text-slate-600 mb-2">
+                Állítsd be egyesével a feladatok idejét (1 – 15 perc között):
+            </h3>
+            <div id="modal-tasks-time-list" class="flex flex-col gap-2 mb-4"></div>
+
+            <div class="flex justify-end">
+                <button onclick="validateAndCloseTimerModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-6 py-2.5 rounded-xl shadow">
+                    ✔ Időkeretek jóváhagyása
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- MODAL 4: MEGJELENÉSI BEÁLLÍTÁSOK                                  -->
+    <!-- ================================================================= -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border-4 border-amber-400">
+            <div class="flex justify-between items-center border-b-2 border-slate-200 pb-3 mb-4">
+                <h2 class="text-xl font-black text-slate-800">⚙️ Megjelenési Beállítások</h2>
                 <button onclick="closeModal('settings-modal')" class="w-9 h-9 rounded-full bg-rose-100 text-rose-600 font-black text-lg">✕</button>
             </div>
 
-            <div class="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <label class="block text-sm font-black text-slate-800 mb-2">Mi történjen, ha egy feladatot kipipál a gyermek?</label>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+            <div class="mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <label class="block text-xs font-black text-slate-800 mb-2">Mi történjen, ha egy feladatot kipipál a gyermek?</label>
+                <div class="flex flex-col gap-2">
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-700">
                         <input type="radio" name="completion-mode" value="fade" onchange="setCompletionMode('fade')" checked>
                         <span>Elhalványul zöld pipával és „KÉSZ!” felirattal</span>
                     </label>
-                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-700">
                         <input type="radio" name="completion-mode" value="hide" onchange="setCompletionMode('hide')">
                         <span>Teljesen eltűnik (elmúlik) a listából</span>
                     </label>
                 </div>
             </div>
 
-            <div class="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <label class="block text-sm font-black text-slate-800 mb-2">Háttér és téma színe:</label>
-                <div class="flex gap-3">
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <label class="block text-xs font-black text-slate-800 mb-2">Háttér és téma színe:</label>
+                <div class="flex flex-wrap gap-2">
                     <button onclick="changeTheme('#f1f5f9', '#0f2942')" class="px-3 py-2 rounded-xl bg-slate-200 font-bold text-xs text-slate-800 border-2 border-slate-400">Klasszikus Kék</button>
                     <button onclick="changeTheme('#fef9c3', '#1e3a8a')" class="px-3 py-2 rounded-xl bg-yellow-100 font-bold text-xs text-slate-800 border-2 border-yellow-400">Meleg Napfény</button>
                     <button onclick="changeTheme('#dcfce7', '#065f46')" class="px-3 py-2 rounded-xl bg-emerald-100 font-bold text-xs text-slate-800 border-2 border-emerald-400">Nyugodt Erdei Zöld</button>
                     <button onclick="changeTheme('#fae8ff', '#581c87')" class="px-3 py-2 rounded-xl bg-purple-100 font-bold text-xs text-slate-800 border-2 border-purple-400">Játékos Pasztell</button>
                 </div>
             </div>
-
-            <div class="mb-4">
-                <h3 class="text-sm font-black text-slate-800 mb-1">A foglalkozás lépéseinek sorrendje (A kötelező 7 lépés nem törölhető):</h3>
-                <p class="text-xs text-slate-500 mb-2">Az általad hozzáadott extra lépések törölhetők.</p>
-                <div id="settings-steps-list" class="flex flex-col gap-2 mb-3"></div>
-                <div class="flex gap-2">
-                    <input id="new-step-title" type="text" placeholder="Új feladat neve (pl. TÜKÖRGYAKORLAT)" class="flex-1 p-2 rounded-xl border border-slate-300 font-bold text-sm">
-                    <input id="new-step-icon" type="text" placeholder="🪞" class="w-14 p-2 rounded-xl border border-slate-300 text-center">
-                    <button onclick="addNewScheduleStep()" class="bg-sky-600 text-white font-black px-4 py-2 rounded-xl text-sm">+ Hozzáadás</button>
-                </div>
-            </div>
         </div>
     </div>
 
     <script>
+        // 1. A 13 JAVASOLT ARTIKULÁCIÓS ELŐKÉSZÍTŐ ÉS TERÁPIÁS FELADAT BANKJA
+        const TASK_BANK = [
+            { bankId: 'tb_1', title: 'ÜDVÖZLÉS & KÖSZÖNÉS', leftIcon: '👋', rightIcon: '😊', desc: 'Egymásra hangolódás, szemkontaktus és üdvözlés a foglalkozás elején.', defaultDuration: 2, defaultActive: true },
+            { bankId: 'tb_2', title: 'ARC- ÉS MIMIKATORNA', leftIcon: '🤡', rightIcon: '😮', desc: 'A vázizomzat és az arcmimika bemelegítése – pl. csodálkozás, nevetés, mérges arc.', defaultDuration: 3, defaultActive: false },
+            { bankId: 'tb_3', title: 'AJAKTORNA', leftIcon: '👄', rightIcon: '😘', desc: 'Ajakgyakorlatok: puszi, kerítés, lufifújó ajakállás, ajakterpesztés-kerekítés.', defaultDuration: 4, defaultActive: true },
+            { bankId: 'tb_4', title: 'NYELVTORNA', leftIcon: '👅', rightIcon: '😋', desc: 'Célzott nyelvgyakorlatok: kanál, óra, kanyargó kígyó, cicanyalás, hinta.', defaultDuration: 5, defaultActive: true },
+            { bankId: 'tb_5', title: 'RAGADÓS JÁTÉK / KENÉS', leftIcon: '😋', rightIcon: '🍯', desc: 'Rágás, nyelés és a nyelv mozgásának aktív indítása – pl. „lekváros vagy mogyorókrémes száj” lenyalása.', defaultDuration: 4, defaultActive: false },
+            { bankId: 'tb_6', title: 'SZÍVÓ-FÚJÓ JÁTÉK', leftIcon: '💨', rightIcon: '🥤', desc: 'Helyes beszédlégzés, irányított fújás, szívószálas és vattapamacs-fújó feladatok.', defaultDuration: 5, defaultActive: true },
+            { bankId: 'tb_7', title: 'ORR- ÉS LÉGZÉSTERÁPIA', leftIcon: '👃', rightIcon: '🌬️', desc: 'Belégzés, benntartás, irányított orrlégzés és szájlégzés elkülönítésének gyakorlása.', defaultDuration: 3, defaultActive: false },
+            { bankId: 'tb_8', title: 'AUDITÍV DIFFERENCIÁLÁS', leftIcon: '👂', rightIcon: '🗣️🖼️', desc: 'Hangok megkülönböztetése hallás után, hívóképekről beszélgetve.', defaultDuration: 6, defaultActive: true },
+            { bankId: 'tb_9', title: 'HANG-KERESŐ', leftIcon: '🗣️', rightIcon: '🔍', desc: 'A célhang izolált hangoztatása, hangutánzással és vizuális-akusztikus megerősítéssel.', defaultDuration: 5, defaultActive: false },
+            { bankId: 'tb_10', title: 'HÍVÓKÉPES JÁTÉK', leftIcon: '🎯', rightIcon: '🃏', desc: 'Képek és hangok játékos összekapcsolása és rögzítése.', defaultDuration: 5, defaultActive: false },
+            { bankId: 'tb_11', title: 'PIHENŐ / LAZÍTÁS', leftIcon: '🧘', rightIcon: '🛋️', desc: 'Rövid izomlazítás, szenzoros megnyugvás és pihenő játék.', defaultDuration: 3, defaultActive: false },
+            { bankId: 'tb_12', title: 'JUTI JÁTÉK / FINIS', leftIcon: '🎁', rightIcon: '🧸', desc: 'Megérdemelt játékos lezárás, szabadon választott kedvenc játékkal.', defaultDuration: 5, defaultActive: true },
+            { bankId: 'tb_13', title: 'BÚCSÚ / HAZAMENETEL', leftIcon: '🚪', rightIcon: '👋', desc: 'Elköszönés és a foglalkozás kiszámítható lezárása.', defaultDuration: 3, defaultActive: true }
+        ];
+
+        // 2. A 8 GYERMEK IGÉNY- ÉS VISSZAJELZŐ AAC KÁRTYA (ELFÁRADTAM javítva + ? magyarázatok)
+        let aacChildButtons = [
+            { id: 'aac_meg', label: 'MÉG', icon: '↺', color: 'bg-sky-100 border-sky-400 text-sky-950', desc: 'Szeretném folytatni, ismételjük meg ezt a feladatot!', audioUrl: null },
+            { id: 'aac_nemakarom', label: 'NEM AKAROM / ELÉG', icon: '🛑', color: 'bg-rose-100 border-rose-400 text-rose-950', desc: 'Szeretném befejezni, vagy most nem kérem ezt a feladatot.', audioUrl: null },
+            { id: 'aac_mast', label: 'MÁST / CSERE', icon: '🔄', color: 'bg-amber-100 border-amber-400 text-amber-950', desc: 'Valami más tevékenységet vagy másik eszközt szeretnék helyette.', audioUrl: null },
+            { id: 'aac_segits', label: 'SEGÍTS!', icon: '🤝', color: 'bg-emerald-100 border-emerald-400 text-emerald-950', desc: 'Nehéz a feladat, felnőtt támogatást kérek!', audioUrl: null },
+            { id: 'aac_pihi', label: 'PIHI / ELFÁRADTAM', icon: '🥱', color: 'bg-purple-100 border-purple-400 text-purple-950', desc: 'Rövid szünetre vagy lazításra van szükségem, elfáradtam.', audioUrl: null },
+            { id: 'aac_igen', label: 'IGEN / OKÉ', icon: '👍', color: 'bg-lime-100 border-lime-500 text-lime-950', desc: 'Tetszik, egyetértek, készen állok!', audioUrl: null },
+            { id: 'aac_nem', label: 'NEM', icon: '👎', color: 'bg-orange-100 border-orange-400 text-orange-950', desc: 'Nem szeretném, nem értek egyet.', audioUrl: null },
+            { id: 'aac_kerek', label: 'KÉREK', icon: '🙏', color: 'bg-cyan-100 border-cyan-400 text-cyan-950', desc: 'Kérek szépen / szeretném elkérni az adott tárgyat vagy játékot.', audioUrl: null }
+        ];
+
+        // 3. ALAP LOGOPÉDIAI HÍVÓKÉPEK
         const PRESET_CALLING_CARDS = [
             { id: 'sz', phoneme: '[SZ]', word: 'Kígyó', icon: '🐍' },
             { id: 's',  phoneme: '[S]',  word: 'Vonat', icon: '🚂' },
@@ -252,72 +487,372 @@
             { id: 'm',  phoneme: '[M]',  word: 'Mackó', icon: '🐻' }
         ];
 
-        let scheduleSteps = [
-            { id: 1, title: 'KÖSZÖNÉS', leftIcon: '👋', rightIcon: '😊', completed: false, attachedCards: [], isDefault: true },
-            { id: 2, title: 'AJAKGYAKORLATOK', leftIcon: '👄', rightIcon: '😘', completed: false, attachedCards: [], isDefault: true },
-            { id: 3, title: 'NYELVTORNA', leftIcon: '👅', rightIcon: '😋', completed: false, attachedCards: [], isDefault: true },
-            { id: 4, title: 'SZÍVÓ-FÚJÓ', leftIcon: '💨', rightIcon: '🥤', completed: false, attachedCards: [], isDefault: true },
-            { id: 5, title: 'AUDITÍV DIFFERENCIÁLÁS', leftIcon: '👂', rightIcon: '🗣️🖼️', completed: false, attachedCards: [], isDefault: true },
-            { id: 6, title: 'JUTI JÁTÉK', leftIcon: '🎁', rightIcon: '🧸', completed: false, attachedCards: [], isDefault: true },
-            { id: 7, title: 'ELBÚCSÚZÁS', leftIcon: '🚪', rightIcon: '👋', completed: false, attachedCards: [], isDefault: true }
-        ];
+        // AKTÍV MENETREND LÉPÉSEK
+        let scheduleSteps = TASK_BANK.filter(t => t.defaultActive).map((t, i) => ({
+            id: i + 1,
+            bankId: t.bankId,
+            title: t.title,
+            leftIcon: t.leftIcon,
+            rightIcon: t.rightIcon,
+            imageUrl: null,
+            desc: t.desc,
+            durationMinutes: t.defaultDuration,
+            remainingSeconds: t.defaultDuration * 60,
+            completed: false,
+            attachedCards: []
+        }));
 
         let sidebarCards = [
-            { id: 'sz', phoneme: '[SZ]', word: 'Kígyó', icon: '🐍', audioUrl: null },
-            { id: 's',  phoneme: '[S]',  word: 'Vonat', icon: '🚂', audioUrl: null },
-            { id: 'c',  phoneme: '[C]',  word: 'Cica',  icon: '🐱', audioUrl: null },
-            { id: 'r',  phoneme: '[R]',  word: 'Helikopter', icon: '🚁', audioUrl: null }
+            { id: 'sz', phoneme: '[SZ]', word: 'Kígyó', icon: '🐍', imageUrl: null, audioUrl: null },
+            { id: 's',  phoneme: '[S]',  word: 'Vonat', icon: '🚂', imageUrl: null, audioUrl: null },
+            { id: 'c',  phoneme: '[C]',  word: 'Cica',  icon: '🐱', imageUrl: null, audioUrl: null },
+            { id: 'r',  phoneme: '[R]',  word: 'Helikopter', icon: '🚁', imageUrl: null, audioUrl: null }
         ];
 
         let completionMode = 'fade';
         let selectedCardForTap = null;
 
-        // --- HANGRÖGZÍTÉS ÉS HANGERŐVEZÉRELT LEJÁTSZÁS ---
+        // IDŐZÍTŐ ÁLLAPOTOK
+        let mainTimerMinutes = 30;
+        let mainTimerRemainingSeconds = 30 * 60;
+        let globalTimerInterval = null;
+        let activeRunningStepIdx = null;
+
+        // --- INFORMÁCIÓS (?) POPUP KEZELÉSE ---
+        function showInfoPopover(icon, title, desc, event) {
+            if (event) event.stopPropagation();
+            document.getElementById('info-popover-icon').textContent = icon || 'ℹ️';
+            document.getElementById('info-popover-title').textContent = title;
+            document.getElementById('info-popover-desc').textContent = desc;
+            document.getElementById('info-popover').classList.remove('hidden');
+        }
+        function closeInfoPopover() {
+            document.getElementById('info-popover').classList.add('hidden');
+        }
+
+        // --- GYERMEK AAC IGÉNY-GOMBOK RENDERELÉSE ÉS MŰKÖDÉSE ---
+        function renderAacButtons() {
+            const grid = document.getElementById('aac-buttons-grid');
+            grid.innerHTML = '';
+            aacChildButtons.forEach(btn => {
+                const el = document.createElement('div');
+                el.className = `aac-btn cursor-pointer rounded-2xl border-2 p-2 shadow-sm flex flex-col items-center justify-between relative ${btn.color}`;
+                el.onclick = (e) => triggerAacChildSignal(btn, e);
+
+                el.innerHTML = `
+                    <div class="w-full flex justify-between items-center">
+                        <button onclick="recordAacVoice('${btn.id}', event)" title="Saját hang rögzítése ehhez a jelzéshez" class="w-5 h-5 rounded-full bg-white/80 hover:bg-white text-[10px] flex items-center justify-center shadow-xs">
+                            🎙️
+                        </button>
+                        <button onclick="showInfoPopover('${btn.icon}', '${btn.label}', '${btn.desc}', event)" title="Magyarázat megjelenítése" class="w-5 h-5 rounded-full bg-slate-800/15 hover:bg-slate-800 hover:text-white text-slate-800 font-black text-[10px] flex items-center justify-center">
+                            ?
+                        </button>
+                    </div>
+                    <div class="text-4xl md:text-5xl my-1 leading-none">${btn.icon}</div>
+                    <div class="text-[9px] md:text-[10px] font-black text-center leading-tight uppercase tracking-tighter">${btn.label}</div>
+                `;
+                grid.appendChild(el);
+            });
+        }
+
+        function triggerAacChildSignal(btn, event) {
+            playChime(520, 880);
+            if (btn.audioUrl) {
+                const a = new Audio(btn.audioUrl);
+                a.volume = 1.0;
+                a.play().catch(()=>{});
+            }
+            if (event) spawnSparkles(event.clientX, event.clientY);
+
+            const banner = document.getElementById('aac-feedback-banner');
+            document.getElementById('aac-banner-icon').textContent = btn.icon;
+            document.getElementById('aac-banner-text').textContent = btn.label;
+            banner.classList.remove('hidden');
+
+            // Ha a gyermek "MÉG" vagy más jelzést nyom, kártyaként is kijelölhető
+            selectedCardForTap = { id: btn.id, phoneme: btn.label, word: '', icon: btn.icon, audioUrl: btn.audioUrl };
+            document.getElementById('selected-helper').classList.remove('hidden');
+            document.getElementById('selected-helper-name').textContent = `${btn.icon} ${btn.label}`;
+        }
+
+        function hideAacBanner() {
+            document.getElementById('aac-feedback-banner').classList.add('hidden');
+        }
+
+        function recordAacVoice(aacId, event) {
+            event.stopPropagation();
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('A böngésződ nem támogatja a mikrofont!');
+                return;
+            }
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                const recorder = new MediaRecorder(stream);
+                let chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const item = aacChildButtons.find(b => b.id === aacId);
+                    if (item) item.audioUrl = url;
+                    stream.getTracks().forEach(t => t.stop());
+                    playChime(700, 1000);
+                    alert('🎙️ Hang sikeresen rögzítve a gyermek jelzéséhez!');
+                };
+                recorder.start();
+                alert('🎙️ Felvétel indul! Mondd ki a kifejezést (3 mp)...');
+                setTimeout(() => { if (recorder.state === 'recording') recorder.stop(); }, 3000);
+            }).catch(() => alert('Mikrofon engedély szükséges!'));
+        }
+
+        // --- TIME TIMER ÉS FELADATONKÉNTI IDŐKERET LOGIKA + VALIDÁCIÓ ---
+        function getTasksTotalMinutes() {
+            return scheduleSteps.reduce((sum, s) => sum + (parseInt(s.durationMinutes) || 1), 0);
+        }
+
+        function checkTimeValidation() {
+            const sum = getTasksTotalMinutes();
+            const alertBox = document.getElementById('time-error-alert');
+            const alertText = document.getElementById('time-error-text');
+            const modalError = document.getElementById('modal-timer-error');
+            const summaryEl = document.getElementById('global-timer-summary');
+
+            if (summaryEl) {
+                summaryEl.textContent = `Főoldali keret: ${mainTimerMinutes} perc | Feladatok összege: ${sum} perc`;
+            }
+            if (document.getElementById('modal-tasks-sum')) {
+                document.getElementById('modal-tasks-sum').textContent = `${sum} perc`;
+            }
+
+            if (sum > mainTimerMinutes) {
+                const msg = `A feladatokhoz beállított idők összege (${sum} perc) MEGHALADJA a főoldali Time Timer idejét (${mainTimerMinutes} perc)! Kérlek, csökkentsd egyesével a feladatok idejét (1–15 perc között), vagy növeld a főoldali Time Timer-t, hogy a két időtartam pontosan egyenlő legyen!`;
+                alertText.textContent = msg;
+                alertBox.classList.remove('hidden');
+                if (modalError) { modalError.textContent = '⚠️ ' + msg; modalError.classList.remove('hidden'); }
+                return false;
+            } else if (sum !== mainTimerMinutes) {
+                const msg = `A feladatok összesített ideje (${sum} perc) és a főoldali Time Timer (${mainTimerMinutes} perc) jelenleg nem egyenlő. A két időtartamnak összesítve egyenlőnek kell lennie!`;
+                alertText.textContent = msg;
+                alertBox.classList.remove('hidden');
+                if (modalError) { modalError.textContent = '⚠️ ' + msg; modalError.classList.remove('hidden'); }
+                return false;
+            } else {
+                alertBox.classList.add('hidden');
+                if (modalError) modalError.classList.add('hidden');
+                return true;
+            }
+        }
+
+        function syncMainTimerToTasks() {
+            const sum = getTasksTotalMinutes();
+            mainTimerMinutes = sum;
+            mainTimerRemainingSeconds = sum * 60;
+            document.getElementById('main-timer-input').value = sum;
+            if (document.getElementById('modal-main-timer-input')) {
+                document.getElementById('modal-main-timer-input').value = sum;
+            }
+            checkTimeValidation();
+            updateGlobalTimerUI();
+            saveToStorage();
+        }
+
+        function adjustMainTimerMinutes(delta) {
+            setMainTimerFromInput(mainTimerMinutes + delta);
+        }
+
+        function setMainTimerFromInput(val) {
+            let num = parseInt(val);
+            if (isNaN(num) || num < 1) num = 1;
+            if (num > 180) num = 180;
+            mainTimerMinutes = num;
+            mainTimerRemainingSeconds = num * 60;
+            document.getElementById('main-timer-input').value = num;
+            if (document.getElementById('modal-main-timer-input')) {
+                document.getElementById('modal-main-timer-input').value = num;
+            }
+            checkTimeValidation();
+            updateGlobalTimerUI();
+            saveToStorage();
+        }
+
+        function setStepDuration(stepIdx, newMinutes, event) {
+            if (event) event.stopPropagation();
+            let m = parseInt(newMinutes);
+            if (isNaN(m) || m < 1) m = 1;
+            if (m > 15) {
+                alert('⚠️ Egy feladat ideje legfeljebb 15 perc lehet (1–15 perc között állítható)!');
+                m = 15;
+            }
+            scheduleSteps[stepIdx].durationMinutes = m;
+            scheduleSteps[stepIdx].remainingSeconds = m * 60;
+            checkTimeValidation();
+            renderScheduleSteps();
+            renderModalTasksTimeList();
+            saveToStorage();
+        }
+
+        function validateAndCloseTimerModal() {
+            if (!checkTimeValidation()) {
+                alert('⚠️ Hiba: A feladatok összesített ideje és a főoldali Time Timer ideje nem egyezik! Kérlek, javítsd a feladatok idejét, vagy kattints a "Legyen egyenlő!" gombra!');
+                return;
+            }
+            closeModal('timer-modal');
+        }
+
+        // SVG Körcikk rajzolása a Time Timerhez
+        function describeArc(x, y, radius, fraction) {
+            if (fraction <= 0) return '';
+            if (fraction >= 0.999) {
+                return `M ${x} ${y - radius} A ${radius} ${radius} 0 1 1 ${x - 0.01} ${y - radius} Z`;
+            }
+            const angle = fraction * 360;
+            const rad = (angle * Math.PI) / 180;
+            const endX = x + radius * Math.sin(rad);
+            const endY = y - radius * Math.cos(rad);
+            const largeArcFlag = angle > 180 ? 1 : 0;
+            return `M ${x} ${y} L ${x} ${y - radius} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+        }
+
+        function updateGlobalTimerUI() {
+            const totalSec = Math.max(1, mainTimerMinutes * 60);
+            const fraction = Math.max(0, Math.min(1, mainTimerRemainingSeconds / totalSec));
+            const sector = document.getElementById('global-timer-sector');
+            if (sector) {
+                sector.setAttribute('d', describeArc(50, 50, 44, fraction));
+            }
+            const mins = Math.floor(mainTimerRemainingSeconds / 60);
+            const secs = mainTimerRemainingSeconds % 60;
+            const disp = document.getElementById('global-timer-display');
+            if (disp) {
+                disp.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+        }
+
+        function toggleGlobalTimer() {
+            if (globalTimerInterval) {
+                // Bármikor megállítható!
+                clearInterval(globalTimerInterval);
+                globalTimerInterval = null;
+                document.getElementById('global-start-btn').innerHTML = '▶️ FOLYTATÁS';
+                document.getElementById('global-start-btn').className = 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow transition';
+                return;
+            }
+
+            // Indítás előtt ellenőrizzük, hogy a feladatok ideje nem lépheti túl a főoldali Time Timert!
+            if (!checkTimeValidation()) {
+                alert('⚠️ HIBA: A feladatok összesített ideje (' + getTasksTotalMinutes() + ' perc) nem egyezik meg a főoldali Time Timer idejével (' + mainTimerMinutes + ' perc)!\n\nKérlek, javítsd egyesével a feladatok időkeretét (1-15 perc között), vagy igazítsd hozzá a főoldali időzítőt!');
+                openModal('timer-modal');
+                return;
+            }
+
+            document.getElementById('global-start-btn').innerHTML = '⏸️ SZÜNET';
+            document.getElementById('global-start-btn').className = 'flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl shadow transition';
+
+            globalTimerInterval = setInterval(() => {
+                if (mainTimerRemainingSeconds > 0) {
+                    mainTimerRemainingSeconds--;
+                }
+
+                // Az éppen aktív (első még nem kész) vagy kijelölt feladat belső folyamatjelzőjét is léptetjük
+                const targetIdx = activeRunningStepIdx !== null ? activeRunningStepIdx : scheduleSteps.findIndex(s => !s.completed);
+                if (targetIdx !== -1 && scheduleSteps[targetIdx]) {
+                    if (scheduleSteps[targetIdx].remainingSeconds > 0) {
+                        scheduleSteps[targetIdx].remainingSeconds--;
+                        if (scheduleSteps[targetIdx].remainingSeconds === 0) {
+                            playChime(600, 1100);
+                        }
+                    }
+                }
+
+                updateGlobalTimerUI();
+                renderScheduleSteps();
+
+                if (mainTimerRemainingSeconds <= 0) {
+                    clearInterval(globalTimerInterval);
+                    globalTimerInterval = null;
+                    playChime(500, 1000);
+                    triggerCelebration();
+                    document.getElementById('global-start-btn').innerHTML = '▶️ INDÍTÁS';
+                }
+            }, 1000);
+        }
+
+        function stopAndResetGlobalTimer() {
+            if (globalTimerInterval) {
+                clearInterval(globalTimerInterval);
+                globalTimerInterval = null;
+            }
+            mainTimerRemainingSeconds = mainTimerMinutes * 60;
+            scheduleSteps.forEach(s => { s.remainingSeconds = (s.durationMinutes || 5) * 60; });
+            document.getElementById('global-start-btn').innerHTML = '▶️ INDÍTÁS';
+            document.getElementById('global-start-btn').className = 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow transition';
+            updateGlobalTimerUI();
+            renderScheduleSteps();
+        }
+
+        // --- BAL OLDALI HÍVÓKÁRTYÁK ÉS TÖMEGES FELTÖLTÉS ---
+        function handleBulkCardUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            let loaded = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                const cleanName = file.name.replace(/\.[^/.]+$/, '').slice(0, 18);
+                reader.onload = e => {
+                    sidebarCards.push({
+                        id: 'bulk_card_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        phoneme: '',
+                        word: cleanName,
+                        icon: '🖼️',
+                        imageUrl: e.target.result,
+                        audioUrl: null
+                    });
+                    loaded++;
+                    if (loaded === files.length) {
+                        saveToStorage();
+                        renderSidebarCards();
+                        playChime(550, 900);
+                        closeModal('library-modal');
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
         function recordCardVoice(cardId, event) {
             event.stopPropagation();
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert('A böngésződ nem támogatja a mikrofont!');
                 return;
             }
-
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 const mediaRecorder = new MediaRecorder(stream);
                 let audioChunks = [];
-
                 mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     const audioUrl = URL.createObjectURL(audioBlob);
-                    
                     const card = sidebarCards.find(c => c.id === cardId);
                     if (card) {
                         card.audioUrl = audioUrl;
                         saveToStorage();
                         renderSidebarCards();
                         playChime(700, 1000);
-                        alert('🎙️ Saját hang sikeresen rögzítve!');
                     }
                     stream.getTracks().forEach(track => track.stop());
                 };
-
                 mediaRecorder.start();
-                alert('🎙️ Felvétel folyamatban... Mondd ki a hangot, majd 3 másodperc múlva kattints az OK gombra!');
-                setTimeout(() => {
-                    if (mediaRecorder.state === 'recording') {
-                        mediaRecorder.stop();
-                    }
-                }, 3000);
-            }).catch(() => {
-                alert('Mikrofon engedély szükséges a hangfelvételhez!');
-            });
+                alert('🎙️ Felvétel folyamatban (3 mp)...');
+                setTimeout(() => { if (mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 3000);
+            }).catch(() => alert('Mikrofon engedély szükséges!'));
         }
 
         function playCardAudio(card) {
             playChime(500, 750);
-            if (card.audioUrl) {
+            if (card && card.audioUrl) {
                 const audio = new Audio(card.audioUrl);
-                audio.volume = 1.0; // Teljes hangerő
-                audio.play().catch(e => console.log('Hanglejátszási hiba:', e));
+                audio.volume = 1.0;
+                audio.play().catch(() => {});
             }
         }
 
@@ -351,41 +886,36 @@
             sidebarCards.forEach((card, index) => {
                 const isSelected = selectedCardForTap && selectedCardForTap.id === card.id;
                 const visual = card.imageUrl
-                    ? `<img src="${card.imageUrl}" class="w-10 h-10 rounded-lg object-cover border border-slate-300">`
-                    : `<span class="text-3xl">${card.icon}</span>`;
+                    ? `<img src="${card.imageUrl}" class="w-14 h-14 rounded-xl object-cover border-2 border-slate-300 shadow-xs">`
+                    : `<span class="text-5xl leading-none">${card.icon}</span>`;
 
                 const el = document.createElement('div');
-                el.className = `sidebar-card bg-white rounded-2xl p-2.5 shadow-md flex items-center justify-between cursor-grab active:cursor-grabbing border-2 border-slate-200 relative group ${isSelected ? 'selected-card-ring' : ''}`;
+                el.className = `bg-white rounded-2xl p-2 shadow-md flex items-center justify-between cursor-pointer border-2 border-slate-200 ${isSelected ? 'selected-card-ring' : ''}`;
                 el.draggable = true;
-                el.ondragstart = (ev) => {
-                    ev.dataTransfer.setData('text/plain', JSON.stringify(card));
-                };
+                el.ondragstart = (ev) => ev.dataTransfer.setData('text/plain', JSON.stringify(card));
                 el.onclick = () => selectCardForTap(card);
 
                 const micBg = card.audioUrl ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
 
                 el.innerHTML = `
                     <div class="flex items-center gap-2.5">
-                        <span class="font-black text-xl text-slate-900">${card.phoneme}</span>
                         ${visual}
-                        <span class="text-xs font-extrabold text-slate-600">${card.word}</span>
+                        <div class="flex flex-col">
+                            <span class="font-black text-sm text-slate-900">${card.phoneme || ''}</span>
+                            <span class="text-[10px] font-bold text-slate-500">${card.word || ''}</span>
+                        </div>
                     </div>
                     <div class="flex items-center gap-1">
-                        <button onclick="event.stopPropagation(); playCardAudio(card)" title="Lejátszás" class="w-8 h-8 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center justify-center text-sm font-bold">
-                            🔊
-                        </button>
-                        <button onclick="recordCardVoice('${card.id}', event)" title="Saját hang rögzítése" class="w-8 h-8 rounded-full ${micBg} hover:opacity-80 flex items-center justify-center text-xs font-bold">
-                            🎙️
-                        </button>
-                        <button onclick="removeSidebarCard(${index}, event)" title="Kártya törlése a sávból" class="w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-600 flex items-center justify-center text-xs font-black transition">
-                            ✕
-                        </button>
+                        <button onclick="event.stopPropagation(); playCardAudio(sidebarCards[${index}])" title="Lejátszás" class="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center text-xs">🔊</button>
+                        <button onclick="recordCardVoice('${card.id}', event)" title="Hang rögzítése" class="w-7 h-7 rounded-full ${micBg} flex items-center justify-center text-xs">🎙️</button>
+                        <button onclick="removeSidebarCard(${index}, event)" title="Törlés" class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[10px] font-black">✕</button>
                     </div>
                 `;
                 container.appendChild(el);
             });
         }
 
+        // --- MENETREND LÉPÉSEK RENDERELÉSE (ÓRIÁS GRAFIKA, KIS FELIRAT, ? GOMB, VIZUÁLIS IDŐZÍTŐ) ---
         function renderScheduleSteps() {
             const container = document.getElementById('steps-list');
             container.innerHTML = '';
@@ -401,16 +931,35 @@
                     stateClass = 'active-step-glow';
                 }
 
-                const badgesHtml = step.attachedCards.map((c, bIdx) => `
-                    <span onclick="event.stopPropagation(); playCardAudio(c)" class="inline-flex items-center gap-1 bg-sky-100 border border-sky-400 text-sky-900 font-black text-xs px-2.5 py-1 rounded-full shadow-sm hover:bg-sky-200 cursor-pointer">
-                        <span>${c.icon || '🔊'}</span>
-                        <span>${c.phoneme} ${c.word}</span>
-                        <button onclick="event.stopPropagation(); removeAttachedCard(${idx}, ${bIdx})" class="ml-1 text-rose-600 hover:text-rose-800 font-black">×</button>
-                    </span>
-                `).join('');
+                // Fő grafika: feltöltött kép vagy óriási emoji (pl. nagy fül az auditív differenciálásnál)
+                const mainVisual = step.imageUrl
+                    ? `<img src="${step.imageUrl}" class="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover border-2 border-slate-300 shadow">`
+                    : `<span class="text-5xl md:text-6xl leading-none">${step.leftIcon}</span>`;
+
+                // Csatolt hívókártyák (nagy képpel!)
+                const badgesHtml = step.attachedCards.map((c, bIdx) => {
+                    const cVis = c.imageUrl
+                        ? `<img src="${c.imageUrl}" class="w-10 h-10 rounded-lg object-cover">`
+                        : `<span class="text-3xl">${c.icon || '🔊'}</span>`;
+                    return `
+                        <span onclick="event.stopPropagation(); playCardAudio(scheduleSteps[${idx}].attachedCards[${bIdx}])" class="inline-flex items-center gap-1.5 bg-sky-50 border-2 border-sky-400 text-sky-950 font-black text-[10px] px-2 py-1 rounded-2xl shadow-xs cursor-pointer">
+                            ${cVis}
+                            <span>${c.phoneme || ''}</span>
+                            <button onclick="event.stopPropagation(); removeAttachedCard(${idx}, ${bIdx})" class="ml-0.5 text-rose-600 font-black text-xs">×</button>
+                        </span>
+                    `;
+                }).join('');
+
+                // Feladaton belüli vizuális idő-folyamatjelző
+                const totalTaskSec = Math.max(1, (step.durationMinutes || 5) * 60);
+                const remSec = step.remainingSeconds !== undefined ? step.remainingSeconds : totalTaskSec;
+                const progressPct = Math.round(((totalTaskSec - remSec) / totalTaskSec) * 100);
+                const remFraction = Math.max(0, Math.min(1, remSec / totalTaskSec));
+                const mMin = Math.floor(remSec / 60);
+                const mSec = remSec % 60;
 
                 const row = document.createElement('div');
-                row.className = `step-card rounded-2xl px-4 py-3 shadow-md flex items-center justify-between cursor-pointer ${stateClass}`;
+                row.className = `step-card rounded-3xl px-4 py-3 shadow-md flex flex-col gap-2 cursor-pointer relative ${stateClass}`;
                 row.ondragover = (e) => e.preventDefault();
                 row.ondrop = (e) => {
                     e.preventDefault();
@@ -429,42 +978,78 @@
                 };
 
                 row.innerHTML = `
-                    <div class="flex items-center gap-3 md:gap-4 flex-wrap">
-                        <span class="text-xl md:text-2xl font-black text-slate-600 w-6 text-center">${idx + 1}</span>
-                        <span class="text-2xl md:text-3xl">${step.leftIcon}</span>
-                        <span class="text-base md:text-xl font-black tracking-wide ${step.completed ? 'line-through text-slate-500' : 'text-slate-900'}">
-                            ${step.title}
-                        </span>
-                        <div class="flex flex-wrap gap-1.5">${badgesHtml}</div>
+                    <div class="flex items-center justify-between gap-3">
+                        <!-- BAL: SORSZÁM + ÓRIÁSI IKON/KÉP + KIS FELIRAT FELNŐTTNEK -->
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <span class="text-sm font-black text-slate-400 w-5 text-center">${idx + 1}.</span>
+                            ${mainVisual}
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[11px] md:text-xs font-extrabold tracking-wide uppercase ${step.completed ? 'line-through text-slate-400' : 'text-slate-600'}">
+                                        ${step.title}
+                                    </span>
+                                    <button onclick="showInfoPopover('${step.leftIcon}', '${step.title}', '${step.desc || 'Logopédiai fejlesztő feladat.'}', event)" title="Feladat leírása" class="w-5 h-5 rounded-full bg-slate-200 hover:bg-sky-500 hover:text-white text-slate-700 font-black text-[10px] flex items-center justify-center">
+                                        ?
+                                    </button>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 mt-1">${badgesHtml}</div>
+                            </div>
+                        </div>
+
+                        <!-- JOBB: MÁSODLAGOS NAGY GRAFIKA + KÉSZ PIPA -->
+                        <div class="flex items-center gap-3">
+                            <span class="text-4xl md:text-5xl hidden sm:inline leading-none">${step.rightIcon || ''}</span>
+                            ${step.completed ? `
+                                <div class="flex flex-col items-center">
+                                    <div class="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-3xl shadow-md">✓</div>
+                                    <span class="text-[9px] font-black text-emerald-700 mt-0.5">KÉSZ!</span>
+                                </div>
+                            ` : `
+                                <div class="w-12 h-12 rounded-full border-4 border-slate-300 bg-white hover:border-emerald-400 transition shadow-inner"></div>
+                            `}
+                        </div>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <span class="text-2xl hidden sm:inline">${step.rightIcon || ''}</span>
-                        ${step.completed ? `
-                            <div class="flex flex-col items-center">
-                                <div class="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-xl shadow">✓</div>
-                                <span class="text-[11px] font-black text-emerald-700 tracking-wider mt-0.5">KÉSZ!</span>
-                            </div>
-                        ` : `
-                            <div class="w-9 h-9 rounded-full border-4 border-slate-300 bg-white hover:border-emerald-400 transition"></div>
-                        `}
+                    <!-- ALSÓ SÁV A FELADATBAN: VIZUÁLIS FOLYAMATJELZŐ + 1-15 PERC ÁLLÍTÓ -->
+                    <div class="flex items-center gap-2.5 pt-1.5 border-t border-slate-200/80" onclick="event.stopPropagation()">
+                        <!-- Mini Vizuális Time Timer Korong -->
+                        <svg viewBox="0 0 36 36" class="w-7 h-7 -rotate-90 rounded-full border border-slate-400 bg-white shrink-0">
+                            <path d="${describeArc(18, 18, 16, remFraction)}" fill="#ef4444" />
+                        </svg>
+
+                        <!-- Vizuális Haladási Sáv a gyermeknek -->
+                        <div class="flex-1 bg-slate-200 h-3.5 rounded-full overflow-hidden p-0.5">
+                            <div class="bg-gradient-to-r from-amber-400 to-emerald-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+                        </div>
+
+                        <!-- 1-15 perc gyorsállító a felnőttnek -->
+                        <div class="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-xl border border-slate-200">
+                            <button onclick="setStepDuration(${idx}, ${step.durationMinutes - 1}, event)" class="w-5 h-5 rounded bg-white font-black text-xs text-slate-700 shadow-xs">-</button>
+                            <span class="text-[10px] font-black text-slate-700 min-w-[42px] text-center" title="Hátralévő: ${String(mMin).padStart(2,'0')}:${String(mSec).padStart(2,'0')}">
+                                ${step.durationMinutes} perc
+                            </span>
+                            <button onclick="setStepDuration(${idx}, ${step.durationMinutes + 1}, event)" class="w-5 h-5 rounded bg-white font-black text-xs text-slate-700 shadow-xs">+</button>
+                        </div>
                     </div>
                 `;
                 container.appendChild(row);
             });
 
             renderSettingsStepsList();
+            renderTaskBankGrid();
+            renderModalTasksTimeList();
         }
 
         function toggleStepCompletion(idx, event) {
             const step = scheduleSteps[idx];
             step.completed = !step.completed;
-
             if (step.completed) {
+                step.remainingSeconds = 0;
                 playChime(500, 960);
                 if (event) spawnSparkles(event.clientX, event.clientY);
                 if (scheduleSteps.every(s => s.completed)) setTimeout(triggerCelebration, 350);
             } else {
+                step.remainingSeconds = (step.durationMinutes || 5) * 60;
                 playChime(350, 260);
             }
             saveToStorage();
@@ -475,13 +1060,8 @@
             selectedCardForTap = card;
             playCardAudio(card);
             document.getElementById('selected-helper').classList.remove('hidden');
-            document.getElementById('selected-helper-name').textContent = `${card.phoneme} – ${card.word}`;
+            document.getElementById('selected-helper-name').textContent = `${card.phoneme || ''} ${card.word || ''}`;
             renderSidebarCards();
-        }
-
-        function selectOrDragRepeatCard() {
-            const repeatCard = { id: 'meg', phoneme: 'MÉG ↺', word: 'Ismétlés', icon: '↺', audioUrl: null };
-            selectCardForTap(repeatCard);
         }
 
         function clearSelectedCard() {
@@ -504,32 +1084,235 @@
             renderScheduleSteps();
         }
 
+        // --- FELADATBANK (13 ELŐKÉSZÍTŐ FELADAT) ÉS TÖMEGES FELADAT-FELTÖLTÉS ---
+        function renderTaskBankGrid() {
+            const grid = document.getElementById('task-bank-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            TASK_BANK.forEach(item => {
+                const isAdded = scheduleSteps.some(s => s.bankId === item.bankId);
+                const btn = document.createElement('div');
+                btn.className = `cursor-pointer p-3 rounded-2xl border-2 flex items-center justify-between transition ${isAdded ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200 hover:border-sky-400'}`;
+                btn.onclick = () => toggleBankTask(item);
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-3xl">${item.leftIcon}</span>
+                        <div>
+                            <div class="text-xs font-black text-slate-800">${item.title}</div>
+                            <div class="text-[10px] text-slate-500">Alap idő: ${item.defaultDuration} perc</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="showInfoPopover('${item.leftIcon}', '${item.title}', '${item.desc}', event)" class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-black text-xs">?</button>
+                        <span class="text-lg font-black ${isAdded ? 'text-emerald-600' : 'text-slate-300'}">${isAdded ? '✔' : '+'}</span>
+                    </div>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function toggleBankTask(bankItem) {
+            const existingIdx = scheduleSteps.findIndex(s => s.bankId === bankItem.bankId);
+            if (existingIdx !== -1) {
+                scheduleSteps.splice(existingIdx, 1);
+            } else {
+                scheduleSteps.push({
+                    id: Date.now(),
+                    bankId: bankItem.bankId,
+                    title: bankItem.title,
+                    leftIcon: bankItem.leftIcon,
+                    rightIcon: bankItem.rightIcon,
+                    imageUrl: null,
+                    desc: bankItem.desc,
+                    durationMinutes: bankItem.defaultDuration,
+                    remainingSeconds: bankItem.defaultDuration * 60,
+                    completed: false,
+                    attachedCards: []
+                });
+            }
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function handleBulkTaskUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            let count = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                const cleanTitle = file.name.replace(/\.[^/.]+$/, '').toUpperCase().slice(0, 22);
+                reader.onload = e => {
+                    scheduleSteps.push({
+                        id: Date.now() + Math.random(),
+                        bankId: null,
+                        title: cleanTitle,
+                        leftIcon: '🖼️',
+                        rightIcon: '✨',
+                        imageUrl: e.target.result,
+                        desc: 'Saját feltöltött vizuális feladat.',
+                        durationMinutes: 5,
+                        remainingSeconds: 300,
+                        completed: false,
+                        attachedCards: []
+                    });
+                    count++;
+                    if (count === files.length) {
+                        checkTimeValidation();
+                        saveToStorage();
+                        renderScheduleSteps();
+                        playChime(600, 950);
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function uploadSingleStepImage(idx, event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                scheduleSteps[idx].imageUrl = e.target.result;
+                saveToStorage();
+                renderScheduleSteps();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderSettingsStepsList() {
+            const list = document.getElementById('settings-steps-list');
+            if (!list) return;
+            list.innerHTML = '';
+            scheduleSteps.forEach((step, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex flex-wrap items-center justify-between gap-2 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-black text-xs text-slate-800">${idx + 1}. ${step.leftIcon} ${step.title}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                        <label class="cursor-pointer bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-black px-2 py-1 rounded-lg">
+                            🖼️ Képcsere
+                            <input type="file" accept="image/*" class="hidden" onchange="uploadSingleStepImage(${idx}, event)">
+                        </label>
+                        <input type="number" min="1" max="15" value="${step.durationMinutes}" onchange="setStepDuration(${idx}, this.value, event)" class="w-12 p-1 rounded border border-slate-300 text-center font-black text-xs" title="1-15 perc">
+                        <span class="text-[10px] font-bold text-slate-500">perc</span>
+                        <button onclick="moveStep(${idx}, -1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬆️</button>
+                        <button onclick="moveStep(${idx}, 1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬇️</button>
+                        <button onclick="deleteStep(${idx})" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white">🗑️</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function renderModalTasksTimeList() {
+            const list = document.getElementById('modal-tasks-time-list');
+            if (!list) return;
+            list.innerHTML = '';
+            scheduleSteps.forEach((step, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200';
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">${step.leftIcon}</span>
+                        <span class="text-xs font-black text-slate-800">${idx + 1}. ${step.title}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="setStepDuration(${idx}, ${step.durationMinutes - 1}, event)" class="w-7 h-7 rounded-lg bg-slate-200 font-black text-xs">-</button>
+                        <input type="number" min="1" max="15" value="${step.durationMinutes}" onchange="setStepDuration(${idx}, this.value, event)" class="w-14 p-1 rounded-lg border border-slate-300 text-center font-black text-sm">
+                        <button onclick="setStepDuration(${idx}, ${step.durationMinutes + 1}, event)" class="w-7 h-7 rounded-lg bg-slate-200 font-black text-xs">+</button>
+                        <span class="text-xs font-bold text-slate-600">perc (1–15)</span>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function moveStep(idx, dir) {
+            const t = idx + dir;
+            if (t < 0 || t >= scheduleSteps.length) return;
+            const temp = scheduleSteps[idx];
+            scheduleSteps[idx] = scheduleSteps[t];
+            scheduleSteps[t] = temp;
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function deleteStep(idx) {
+            scheduleSteps.splice(idx, 1);
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function addNewScheduleStep() {
+            const title = document.getElementById('new-step-title').value.trim().toUpperCase();
+            const desc = document.getElementById('new-step-desc').value.trim() || 'Egyéni logopédiai fejlesztő feladat.';
+            const icon = document.getElementById('new-step-icon').value.trim() || '⭐';
+            let dur = parseInt(document.getElementById('new-step-duration').value) || 5;
+            if (dur < 1) dur = 1;
+            if (dur > 15) dur = 15;
+            const fileInput = document.getElementById('new-step-image');
+            if (!title) { alert('Kérlek, adj nevet az új feladatnak!'); return; }
+
+            const finalizeStep = (imgUrl) => {
+                scheduleSteps.push({
+                    id: Date.now(),
+                    bankId: null,
+                    title,
+                    leftIcon: icon,
+                    rightIcon: '✨',
+                    imageUrl: imgUrl,
+                    desc,
+                    durationMinutes: dur,
+                    remainingSeconds: dur * 60,
+                    completed: false,
+                    attachedCards: []
+                });
+                document.getElementById('new-step-title').value = '';
+                document.getElementById('new-step-desc').value = '';
+                fileInput.value = '';
+                checkTimeValidation();
+                saveToStorage();
+                renderScheduleSteps();
+            };
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => finalizeStep(e.target.result);
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                finalizeStep(null);
+            }
+        }
+
+        // --- HÍVÓKÉP GALÉRIA ÉS EGYÉNI KÁRTYA ---
         function renderPresetGallery() {
             const gallery = document.getElementById('preset-gallery');
             gallery.innerHTML = '';
             PRESET_CALLING_CARDS.forEach(card => {
                 const btn = document.createElement('button');
-                btn.className = 'p-3 rounded-2xl border-2 border-slate-200 hover:border-sky-500 bg-slate-50 hover:bg-sky-50 flex flex-col items-center gap-1 transition';
+                btn.className = 'p-2.5 rounded-2xl border-2 border-slate-200 hover:border-sky-500 bg-slate-50 hover:bg-sky-50 flex flex-col items-center gap-1 transition';
                 btn.onclick = () => {
-                    if (!sidebarCards.some(c => c.id === card.id)) {
-                        sidebarCards.push({ ...card, id: card.id + '_' + Date.now(), audioUrl: null });
-                        saveToStorage();
-                        renderSidebarCards();
-                    }
+                    sidebarCards.push({ ...card, id: card.id + '_' + Date.now(), imageUrl: null, audioUrl: null });
+                    saveToStorage();
+                    renderSidebarCards();
                     playChime(500, 700);
                 };
                 btn.innerHTML = `
-                    <span class="text-3xl">${card.icon}</span>
-                    <span class="font-black text-slate-900 text-sm">${card.phoneme} – ${card.word}</span>
-                    <span class="text-[11px] text-sky-700 font-bold">+ Betesz a sávba</span>
+                    <span class="text-4xl">${card.icon}</span>
+                    <span class="font-black text-slate-900 text-xs">${card.phoneme} – ${card.word}</span>
                 `;
                 gallery.appendChild(btn);
             });
         }
 
         function addCustomCallingCard() {
-            const phoneme = document.getElementById('new-card-phoneme').value.trim() || '[HANG]';
-            const word = document.getElementById('new-card-word').value.trim() || 'Saját';
+            const phoneme = document.getElementById('new-card-phoneme').value.trim() || '';
+            const word = document.getElementById('new-card-word').value.trim() || 'Saját kép';
             const icon = document.getElementById('new-card-icon').value.trim() || '⭐';
             const fileInput = document.getElementById('new-card-image');
 
@@ -560,60 +1343,18 @@
             document.getElementById('app-header').style.backgroundColor = header;
         }
 
-        function renderSettingsStepsList() {
-            const list = document.getElementById('settings-steps-list');
-            if (!list) return;
-            list.innerHTML = '';
-            scheduleSteps.forEach((step, idx) => {
-                const item = document.createElement('div');
-                item.className = 'flex items-center justify-between bg-slate-100 px-3 py-2 rounded-xl border border-slate-200';
-                
-                // Ha alapértelmezett (default) lépés, nem engedjük törölni!
-                const deleteBtnHtml = step.isDefault 
-                    ? `<span class="text-[11px] text-slate-400 font-bold px-2">Alaplépés</span>`
-                    : `<button onclick="deleteStep(${idx})" class="px-2.5 py-1 bg-rose-100 text-rose-700 rounded shadow text-xs font-bold hover:bg-rose-600 hover:text-white transition">🗑️ Törlés</button>`;
-
-                item.innerHTML = `
-                    <span class="font-black text-sm text-slate-800">${idx + 1}. ${step.leftIcon} ${step.title}</span>
-                    <div class="flex gap-1.5 items-center">
-                        <button onclick="moveStep(${idx}, -1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬆️</button>
-                        <button onclick="moveStep(${idx}, 1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬇️</button>
-                        ${deleteBtnHtml}
-                    </div>
-                `;
-                list.appendChild(item);
+        function resetAllSteps() {
+            scheduleSteps.forEach(s => {
+                s.completed = false;
+                s.remainingSeconds = (s.durationMinutes || 5) * 60;
             });
-        }
-
-        function moveStep(idx, dir) {
-            const t = idx + dir;
-            if (t < 0 || t >= scheduleSteps.length) return;
-            const temp = scheduleSteps[idx]; scheduleSteps[idx] = scheduleSteps[t]; scheduleSteps[t] = temp;
-            saveToStorage(); renderScheduleSteps();
-        }
-
-        function deleteStep(idx) {
-            if (scheduleSteps[idx].isDefault) {
-                alert('A kötelező alaplépések nem törölhetők!');
-                return;
-            }
-            scheduleSteps.splice(idx, 1);
+            stopAndResetGlobalTimer();
             saveToStorage();
             renderScheduleSteps();
         }
 
-        function addNewScheduleStep() {
-            const title = document.getElementById('new-step-title').value.trim().toUpperCase();
-            const icon = document.getElementById('new-step-icon').value.trim() || '⭐';
-            if (!title) return;
-            scheduleSteps.push({ id: Date.now(), title, leftIcon: icon, rightIcon: '✨', completed: false, attachedCards: [], isDefault: false });
-            document.getElementById('new-step-title').value = '';
-            saveToStorage(); renderScheduleSteps();
-        }
-
-        function resetAllSteps() { scheduleSteps.forEach(s => s.completed = false); saveToStorage(); renderScheduleSteps(); }
         function triggerCelebration() {
-            const end = Date.now() + 3500;
+            const end = Date.now() + 3000;
             (function frame() {
                 confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0, y: 0.8 } });
                 confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1, y: 0.8 } });
@@ -621,6 +1362,7 @@
             })();
         }
 
+        // CSILLAGPOR ANIMÁCIÓ ÉRINTÉSKOR
         const canvas = document.getElementById('sparkle-canvas');
         const ctx = canvas.getContext('2d');
         let particles = [];
@@ -628,7 +1370,7 @@
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
         function spawnSparkles(x, y) {
-            for (let i = 0; i < 28; i++) {
+            for (let i = 0; i < 24; i++) {
                 particles.push({
                     x, y, vx: (Math.random() - 0.5) * 7, vy: (Math.random() - 0.8) * 7,
                     size: Math.random() * 6 + 3, alpha: 1,
@@ -652,22 +1394,47 @@
         function shareSchedule() {
             navigator.clipboard.writeText(window.location.href).then(() => alert('🔗 A linket kimásoltam a vágólapra!'));
         }
+
         function saveToStorage() {
-            try { localStorage.setItem('logopedia_state_v5', JSON.stringify({ scheduleSteps, sidebarCards, completionMode })); } catch(e){}
-        }
-        function loadFromStorage() {
             try {
-                const r = localStorage.getItem('logopedia_state_v5');
-                if (r) {
-                    const p = JSON.parse(r);
-                    if (p.scheduleSteps) scheduleSteps = p.scheduleSteps;
-                    if (p.sidebarCards) sidebarCards = p.sidebarCards;
-                    if (p.completionMode) completionMode = p.completionMode;
-                }
-            } catch(e){}
+                localStorage.setItem('logopedia_aac_v6', JSON.stringify({
+                    scheduleSteps,
+                    sidebarCards,
+                    completionMode,
+                    mainTimerMinutes
+                }));
+            } catch (e) {}
         }
 
-        window.onload = () => { loadFromStorage(); renderSidebarCards(); renderScheduleSteps(); renderPresetGallery(); };
+        function loadFromStorage() {
+            try {
+                const r = localStorage.getItem('logopedia_aac_v6');
+                if (r) {
+                    const p = JSON.parse(r);
+                    if (p.scheduleSteps && p.scheduleSteps.length) scheduleSteps = p.scheduleSteps;
+                    if (p.sidebarCards) sidebarCards = p.sidebarCards;
+                    if (p.completionMode) completionMode = p.completionMode;
+                    if (p.mainTimerMinutes) {
+                        mainTimerMinutes = p.mainTimerMinutes;
+                        mainTimerRemainingSeconds = mainTimerMinutes * 60;
+                    }
+                } else {
+                    syncMainTimerToTasks();
+                }
+            } catch (e) {}
+        }
+
+        window.onload = () => {
+            loadFromStorage();
+            document.getElementById('main-timer-input').value = mainTimerMinutes;
+            document.getElementById('modal-main-timer-input').value = mainTimerMinutes;
+            renderAacButtons();
+            renderSidebarCards();
+            renderScheduleSteps();
+            renderPresetGallery();
+            checkTimeValidation();
+            updateGlobalTimerUI();
+        };
     </script>
 </body>
 </html>
