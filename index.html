@@ -585,3 +585,1385 @@
                 reader.onloadend = () => resolve(reader.result);
                 reader.readAsDataURL(blob);
             });
+        }
+
+        // MAGYAR BESZÉDSZINTÉZIS (TEXT-TO-SPEECH) MOTOR
+        let aacVoiceRate = 0.95;
+        let aacVoicePitch = 1.05;
+
+        function speakHungarianText(text, customRate, customPitch) {
+            if (!('speechSynthesis' in window) || !text) return;
+            try {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'hu-HU';
+                utter.rate = customRate || aacVoiceRate || 0.95;
+                utter.pitch = customPitch || aacVoicePitch || 1.05;
+                utter.volume = 1.0;
+
+                const voices = window.speechSynthesis.getVoices();
+                const huVoice = voices.find(v => v.lang.toLowerCase().includes('hu'));
+                if (huVoice) utter.voice = huVoice;
+
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                console.warn('Beszédszintézis hiba:', e);
+            }
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+        }
+
+        // GYÁRI ALAPÉRTELMEZETT FELADATBANK
+        const DEFAULT_TASK_BANK = [
+            { bankId: 'tb_1', title: 'ÜDVÖZLÉS & KÖSZÖNÉS', leftIcon: '👋', rightIcon: '😊', imageUrl: null, desc: 'Egymásra hangolódás, szemkontaktus és üdvözlés a foglalkozás elején.', defaultDuration: 2, defaultActive: true },
+            { bankId: 'tb_2', title: 'ARC- ÉS MIMIKATORNA', leftIcon: '🤡', rightIcon: '😮', imageUrl: null, desc: 'A vázizomzat és az arcmimika bemelegítése – pl. csodálkozás, nevetés, mérges arc.', defaultDuration: 3, defaultActive: false },
+            { bankId: 'tb_3', title: 'AJAKTORNA', leftIcon: '👄', rightIcon: '😘', imageUrl: null, desc: 'Ajakgyakorlatok: puszi, kerítés, lufifújó ajakállás, ajakterpesztés-kerekítés.', defaultDuration: 4, defaultActive: true },
+            { bankId: 'tb_4', title: 'NYELVTORNA', leftIcon: '👅', rightIcon: '😋', imageUrl: null, desc: 'Célzott nyelvgyakorlatok: kanál, óra, kanyargó kígyó, cicanyalás, hinta.', defaultDuration: 5, defaultActive: true },
+            { bankId: 'tb_5', title: 'RAGADÓS JÁTÉK / KENÉS', leftIcon: '😋', rightIcon: '🍯', imageUrl: null, desc: 'Rágás, nyelés és a nyelv mozgásának aktív indítása – pl. „lekváros vagy mogyorókrémes száj” lenyalása.', defaultDuration: 4, defaultActive: false },
+            { bankId: 'tb_6', title: 'SZÍVÓ-FÚJÓ JÁTÉK', leftIcon: '💨', rightIcon: '🥤', imageUrl: null, desc: 'Helyes beszédlégzés, irányított fújás, szívószálas és vattapamacs-fújó feladatok.', defaultDuration: 5, defaultActive: true },
+            { bankId: 'tb_7', title: 'ORR- ÉS LÉGZÉSTERÁPIA', leftIcon: '👃', rightIcon: '🌬️', imageUrl: null, desc: 'Belégzés, benntartás, irányított orrlégzés és szájlégzés elkülönítésének gyakorlása.', defaultDuration: 3, defaultActive: false },
+            { bankId: 'tb_8', title: 'AUDITÍV DIFFERENCIÁLÁS', leftIcon: '👂', rightIcon: '🗣️🖼️', imageUrl: null, desc: 'Hangok megkülönböztetése hallás után, hívóképekről beszélgetve.', defaultDuration: 6, defaultActive: true },
+            { bankId: 'tb_9', title: 'HANG-KERESŐ', leftIcon: '🗣️', rightIcon: '🔍', imageUrl: null, desc: 'A célhang izolált hangoztatása, hangutánzással és vizuális-akusztikus megerősítéssel.', defaultDuration: 5, defaultActive: false },
+            { bankId: 'tb_10', title: 'HÍVÓKÉPES JÁTÉK', leftIcon: '🎯', rightIcon: '🃏', imageUrl: null, desc: 'Képek és hangok játékos összekapcsolása és rögzítése.', defaultDuration: 5, defaultActive: false },
+            { bankId: 'tb_11', title: 'PIHENŐ / LAZÍTÁS', leftIcon: '🧘', rightIcon: '🛋️', imageUrl: null, desc: 'Rövid izomlazítás, szenzoros megnyugvás és pihenő játék.', defaultDuration: 3, defaultActive: false },
+            { bankId: 'tb_12', title: 'JUTI JÁTÉK / FINIS', leftIcon: '🎁', rightIcon: '🧸', imageUrl: null, desc: 'Megérdemelt játékos lezárás, szabadon választott kedvenc játékkal.', defaultDuration: 5, defaultActive: true },
+            { bankId: 'tb_13', title: 'BÚCSÚ / HAZAMENETEL', leftIcon: '🚪', rightIcon: '👋', imageUrl: null, desc: 'Elköszönés és a foglalkozás kiszámítható lezárása.', defaultDuration: 3, defaultActive: true }
+        ];
+
+        // GYÁRI ALAPÉRTELMEZETT HÍVÓKÉPEK A GYORSVÁLASZTÓBAN
+        const DEFAULT_PRESET_CALLING_CARDS = [
+            { id: 'sz', phoneme: '[SZ]', word: 'Kígyó', icon: '🐍', imageUrl: null },
+            { id: 's',  phoneme: '[S]',  word: 'Vonat', icon: '🚂', imageUrl: null },
+            { id: 'c',  phoneme: '[C]',  word: 'Cica',  icon: '🐱', imageUrl: null },
+            { id: 'r',  phoneme: '[R]',  word: 'Helikopter', icon: '🚁', imageUrl: null },
+            { id: 'zs', phoneme: '[ZS]', word: 'Méhecske', icon: '🐝', imageUrl: null },
+            { id: 'cs', phoneme: '[CS]', word: 'Kiscsibe', icon: '🐥', imageUrl: null },
+            { id: 'z',  phoneme: '[Z]',  word: 'Bogár', icon: '🪲', imageUrl: null },
+            { id: 'p',  phoneme: '[P]',  word: 'Buborék', icon: '🫧', imageUrl: null },
+            { id: 'f',  phoneme: '[F]',  word: 'Szél', icon: '🌬️', imageUrl: null },
+            { id: 'k',  phoneme: '[K]',  word: 'Kakas', icon: '🐓', imageUrl: null },
+            { id: 'l',  phoneme: '[L]',  word: 'Lufi', icon: '🎈', imageUrl: null },
+            { id: 'm',  phoneme: '[M]',  word: 'Mackó', icon: '🐻', imageUrl: null }
+        ];
+
+        // GYÁRI 8 GYERMEK IGÉNY- ÉS VISSZAJELZŐ AAC KÁRTYA (KIMONDOTT SZÖVEGGEL ÉS TESTRESZABHATÓ HANGGAL)
+        const DEFAULT_AAC_CHILD_BUTTONS = [
+            { id: 'aac_meg', label: 'MÉG', spokenText: 'Még szeretném!', icon: '↺', color: 'bg-sky-100 border-sky-400 text-sky-950', desc: 'Szeretném folytatni, ismételjük meg ezt a feladatot!', audioUrl: null },
+            { id: 'aac_nemakarom', label: 'NEM AKAROM / ELÉG', spokenText: 'Nem akarom, elég volt!', icon: '🛑', color: 'bg-rose-100 border-rose-400 text-rose-950', desc: 'Szeretném befejezni, vagy most nem kérem ezt a feladatot.', audioUrl: null },
+            { id: 'aac_mast', label: 'MÁST / CSERE', spokenText: 'Mást szeretnék!', icon: '🔄', color: 'bg-amber-100 border-amber-400 text-amber-950', desc: 'Valami más tevékenységet vagy másik eszközt szeretnék helyette.', audioUrl: null },
+            { id: 'aac_segits', label: 'SEGÍTS!', spokenText: 'Segíts, kérlek!', icon: '🤝', color: 'bg-emerald-100 border-emerald-400 text-emerald-950', desc: 'Nehéz a feladat, felnőtt támogatást kérek!', audioUrl: null },
+            { id: 'aac_pihi', label: 'PIHI / ELFÁRADTAM', spokenText: 'Elfáradtam, pihenni szeretnék!', icon: '🥱', color: 'bg-purple-100 border-purple-400 text-purple-950', desc: 'Rövid szünetre vagy lazításra van szükségem, elfáradtam.', audioUrl: null },
+            { id: 'aac_igen', label: 'IGEN / OKÉ', spokenText: 'Igen!', icon: '👍', color: 'bg-lime-100 border-lime-500 text-lime-950', desc: 'Tetszik, egyetértek, készen állok!', audioUrl: null },
+            { id: 'aac_nem', label: 'NEM', spokenText: 'Nem!', icon: '👎', color: 'bg-orange-100 border-orange-400 text-orange-950', desc: 'Nem szeretném, nem értek egyet.', audioUrl: null },
+            { id: 'aac_kerek', label: 'KÉREK', spokenText: 'Kérek szépen!', icon: '🙏', color: 'bg-cyan-100 border-cyan-400 text-cyan-950', desc: 'Kérek szépen / szeretném elkérni az adott tárgyat vagy játékot.', audioUrl: null }
+        ];
+
+        let taskBank = JSON.parse(JSON.stringify(DEFAULT_TASK_BANK));
+        let presetCallingCards = JSON.parse(JSON.stringify(DEFAULT_PRESET_CALLING_CARDS));
+        let aacChildButtons = JSON.parse(JSON.stringify(DEFAULT_AAC_CHILD_BUTTONS));
+
+        // AKTÍV MENETREND LÉPÉSEK
+        let scheduleSteps = taskBank.filter(t => t.defaultActive).map((t, i) => ({
+            id: i + 1,
+            bankId: t.bankId,
+            title: t.title,
+            leftIcon: t.leftIcon,
+            rightIcon: t.rightIcon,
+            imageUrl: t.imageUrl || null,
+            desc: t.desc,
+            durationMinutes: t.defaultDuration,
+            remainingSeconds: t.defaultDuration * 60,
+            completed: false,
+            attachedCards: []
+        }));
+
+        let sidebarCards = [
+            { id: 'sz', phoneme: '[SZ]', word: 'Kígyó', icon: '🐍', imageUrl: null, audioUrl: null },
+            { id: 's',  phoneme: '[S]',  word: 'Vonat', icon: '🚂', imageUrl: null, audioUrl: null },
+            { id: 'c',  phoneme: '[C]',  word: 'Cica',  icon: '🐱', imageUrl: null, audioUrl: null },
+            { id: 'r',  phoneme: '[R]',  word: 'Helikopter', icon: '🚁', imageUrl: null, audioUrl: null }
+        ];
+
+        let completionMode = 'fade';
+        let selectedCardForTap = null;
+
+        // IDŐZÍTŐ ÁLLAPOTOK
+        let mainTimerMinutes = 30;
+        let mainTimerRemainingSeconds = 30 * 60;
+        let globalTimerInterval = null;
+        let activeRunningStepIdx = null;
+
+        // --- INFORMÁCIÓS (?) POPUP KEZELÉSE ---
+        function showInfoPopover(icon, title, desc, event) {
+            if (event) event.stopPropagation();
+            document.getElementById('info-popover-icon').textContent = icon || 'ℹ️';
+            document.getElementById('info-popover-title').textContent = title;
+            document.getElementById('info-popover-desc').textContent = desc;
+            document.getElementById('info-popover').classList.remove('hidden');
+        }
+        function closeInfoPopover() {
+            document.getElementById('info-popover').classList.add('hidden');
+        }
+
+        // --- GYERMEK AAC IGÉNY-GOMBOK RENDERELÉSE, HANGOS KIMONDÁSA ÉS SZERKESZTÉSE ---
+        function renderAacButtons() {
+            const grid = document.getElementById('aac-buttons-grid');
+            grid.innerHTML = '';
+            aacChildButtons.forEach((btn, idx) => {
+                const hasCustomAudio = !!btn.audioUrl;
+                const voiceBadgeClass = hasCustomAudio
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white/90 hover:bg-white text-slate-800';
+
+                const el = document.createElement('div');
+                el.className = `aac-btn cursor-pointer rounded-2xl border-2 p-2 shadow-sm flex flex-col items-center justify-between relative ${btn.color}`;
+                el.onclick = (e) => triggerAacChildSignal(btn, e);
+
+                el.innerHTML = `
+                    <div class="w-full flex justify-between items-center">
+                        <button onclick="openAacVoiceModal(${idx}, event)" title="Hang vagy kimondott szöveg módosítása" class="px-1.5 py-0.5 rounded-full ${voiceBadgeClass} text-[10px] font-black flex items-center gap-0.5 shadow-xs transition">
+                            <span>${hasCustomAudio ? '🎙️' : '🔊'}</span>
+                            <span>✏️</span>
+                        </button>
+                        <button onclick="showInfoPopover('${btn.icon}', '${btn.label}', '${btn.desc}', event)" title="Magyarázat megjelenítése" class="w-5 h-5 rounded-full bg-slate-800/15 hover:bg-slate-800 hover:text-white text-slate-800 font-black text-[10px] flex items-center justify-center">
+                            ?
+                        </button>
+                    </div>
+                    <div class="text-4xl md:text-5xl my-1 leading-none">${btn.icon}</div>
+                    <div class="text-[9px] md:text-[10px] font-black text-center leading-tight uppercase tracking-tighter">${btn.label}</div>
+                `;
+                grid.appendChild(el);
+            });
+        }
+
+        function speakOrPlayAacItem(btn) {
+            if (btn.audioUrl) {
+                const a = new Audio(btn.audioUrl);
+                a.volume = 1.0;
+                a.play().catch(() => {
+                    speakHungarianText(btn.spokenText || btn.label);
+                });
+            } else {
+                speakHungarianText(btn.spokenText || btn.label);
+            }
+        }
+
+        function triggerAacChildSignal(btn, event) {
+            // Hangos kimondás (egyéni hangfelvétel VAGY magyar gépi beszédhang)
+            speakOrPlayAacItem(btn);
+
+            if (event) spawnSparkles(event.clientX, event.clientY);
+
+            const banner = document.getElementById('aac-feedback-banner');
+            document.getElementById('aac-banner-icon').textContent = btn.icon;
+            document.getElementById('aac-banner-text').textContent = btn.label;
+            document.getElementById('aac-banner-spoken').textContent = `„${btn.spokenText || btn.label}”`;
+            banner.classList.remove('hidden');
+
+            selectedCardForTap = {
+                id: btn.id,
+                phoneme: btn.label,
+                word: '',
+                spokenText: btn.spokenText || btn.label,
+                icon: btn.icon,
+                audioUrl: btn.audioUrl
+            };
+            document.getElementById('selected-helper').classList.remove('hidden');
+            document.getElementById('selected-helper-name').textContent = `${btn.icon} ${btn.label}`;
+        }
+
+        function hideAacBanner() {
+            document.getElementById('aac-feedback-banner').classList.add('hidden');
+        }
+
+        // --- AAC HANGSZERKESZTŐ MODAL FUNKCIÓK ---
+        let editingAacIndex = null;
+        let tempModalAudioUrl = null;
+        let modalMediaRecorder = null;
+        let modalAudioChunks = [];
+
+        function openAacVoiceModal(idx, event) {
+            if (event) event.stopPropagation();
+            editingAacIndex = idx;
+            const btn = aacChildButtons[idx];
+            tempModalAudioUrl = btn.audioUrl || null;
+
+            document.getElementById('aac-modal-icon').textContent = btn.icon;
+            document.getElementById('aac-modal-label').textContent = btn.label;
+            document.getElementById('aac-spoken-text-input').value = btn.spokenText || btn.label;
+            document.getElementById('voice-rate-slider').value = aacVoiceRate;
+            document.getElementById('voice-pitch-slider').value = aacVoicePitch;
+            updateVoiceParamsUI();
+            updateModalCustomAudioStatusUI();
+
+            document.getElementById('aac-voice-modal').classList.remove('hidden');
+        }
+
+        function closeAacVoiceModal() {
+            if (modalMediaRecorder && modalMediaRecorder.state === 'recording') {
+                modalMediaRecorder.stop();
+            }
+            editingAacIndex = null;
+            document.getElementById('aac-voice-modal').classList.add('hidden');
+        }
+
+        function updateVoiceParamsUI() {
+            const r = parseFloat(document.getElementById('voice-rate-slider').value) || 0.95;
+            const p = parseFloat(document.getElementById('voice-pitch-slider').value) || 1.05;
+            document.getElementById('voice-rate-val').textContent = r.toFixed(2);
+            document.getElementById('voice-pitch-val').textContent = p.toFixed(2);
+        }
+
+        function testAacSpokenText() {
+            const txt = document.getElementById('aac-spoken-text-input').value.trim();
+            const r = parseFloat(document.getElementById('voice-rate-slider').value) || 0.95;
+            const p = parseFloat(document.getElementById('voice-pitch-slider').value) || 1.05;
+            speakHungarianText(txt || 'Próba', r, p);
+        }
+
+        function updateModalCustomAudioStatusUI() {
+            const box = document.getElementById('aac-custom-audio-status');
+            if (tempModalAudioUrl) {
+                box.classList.remove('hidden');
+            } else {
+                box.classList.add('hidden');
+            }
+        }
+
+        function toggleAacModalRecording() {
+            const recBtn = document.getElementById('aac-record-toggle-btn');
+
+            if (modalMediaRecorder && modalMediaRecorder.state === 'recording') {
+                modalMediaRecorder.stop();
+                recBtn.innerHTML = '<span>🔴 Felvétel indítása</span>';
+                recBtn.className = 'bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5 transition';
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('A böngésződ nem támogatja a mikrofonos hangfelvételt!');
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                modalAudioChunks = [];
+                modalMediaRecorder = new MediaRecorder(stream);
+                modalMediaRecorder.ondataavailable = e => modalAudioChunks.push(e.data);
+                modalMediaRecorder.onstop = async () => {
+                    const blob = new Blob(modalAudioChunks, { type: 'audio/webm' });
+                    tempModalAudioUrl = await blobToDataURL(blob);
+                    stream.getTracks().forEach(t => t.stop());
+                    updateModalCustomAudioStatusUI();
+                    playCurrentModalCustomAudio();
+                };
+
+                modalMediaRecorder.start();
+                recBtn.innerHTML = '<span>⏹️ Felvétel megállítása (Beszélj most!)</span>';
+                recBtn.className = 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5 animate-pulse transition';
+            }).catch(() => {
+                alert('Kérlek, engedélyezd a mikrofon használatát a böngészőben!');
+            });
+        }
+
+        async function uploadCustomAacAudioFile(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            tempModalAudioUrl = await blobToDataURL(file);
+            updateModalCustomAudioStatusUI();
+            playCurrentModalCustomAudio();
+            event.target.value = '';
+        }
+
+        function playCurrentModalCustomAudio() {
+            if (!tempModalAudioUrl) return;
+            const a = new Audio(tempModalAudioUrl);
+            a.volume = 1.0;
+            a.play().catch(()=>{});
+        }
+
+        function clearCurrentModalCustomAudio() {
+            if (!confirm('⚠️ Biztosan törlöd az egyéni hangfelvételt, és visszaállítod a gépi beszédhangot?')) {
+                return;
+            }
+            tempModalAudioUrl = null;
+            updateModalCustomAudioStatusUI();
+        }
+
+        function saveAacVoiceModal() {
+            if (editingAacIndex === null) return;
+            const btn = aacChildButtons[editingAacIndex];
+            const newSpoken = document.getElementById('aac-spoken-text-input').value.trim();
+            btn.spokenText = newSpoken || btn.label;
+            btn.audioUrl = tempModalAudioUrl;
+
+            aacVoiceRate = parseFloat(document.getElementById('voice-rate-slider').value) || 0.95;
+            aacVoicePitch = parseFloat(document.getElementById('voice-pitch-slider').value) || 1.05;
+
+            saveToStorage();
+            renderAacButtons();
+            speakOrPlayAacItem(btn);
+            closeAacVoiceModal();
+        }
+
+        // --- TIME TIMER ÉS FELADATONKÉNTI IDŐKERET LOGIKA + VALIDÁCIÓ ---
+        function getTasksTotalMinutes() {
+            return scheduleSteps.reduce((sum, s) => sum + (parseInt(s.durationMinutes) || 1), 0);
+        }
+
+        function checkTimeValidation() {
+            const sum = getTasksTotalMinutes();
+            const alertBox = document.getElementById('time-error-alert');
+            const alertText = document.getElementById('time-error-text');
+            const modalError = document.getElementById('modal-timer-error');
+            const summaryEl = document.getElementById('global-timer-summary');
+
+            if (summaryEl) {
+                summaryEl.textContent = `Főoldali keret: ${mainTimerMinutes} perc | Feladatok összege: ${sum} perc`;
+            }
+            if (document.getElementById('modal-tasks-sum')) {
+                document.getElementById('modal-tasks-sum').textContent = `${sum} perc`;
+            }
+
+            if (sum > mainTimerMinutes) {
+                const msg = `A feladatokhoz beállított idők összege (${sum} perc) MEGHALADJA a főoldali Time Timer idejét (${mainTimerMinutes} perc)! Kérlek, csökkentsd egyesével a feladatok idejét (1–15 perc között), vagy növeld a főoldali Time Timer-t, hogy a két időtartam pontosan egyenlő legyen!`;
+                alertText.textContent = msg;
+                alertBox.classList.remove('hidden');
+                if (modalError) { modalError.textContent = '⚠️ ' + msg; modalError.classList.remove('hidden'); }
+                return false;
+            } else if (sum !== mainTimerMinutes) {
+                const msg = `A feladatok összesített ideje (${sum} perc) és a főoldali Time Timer (${mainTimerMinutes} perc) jelenleg nem egyenlő. A két időtartamnak összesítve egyenlőnek kell lennie!`;
+                alertText.textContent = msg;
+                alertBox.classList.remove('hidden');
+                if (modalError) { modalError.textContent = '⚠️ ' + msg; modalError.classList.remove('hidden'); }
+                return false;
+            } else {
+                alertBox.classList.add('hidden');
+                if (modalError) modalError.classList.add('hidden');
+                return true;
+            }
+        }
+
+        function syncMainTimerToTasks() {
+            const sum = Math.max(1, getTasksTotalMinutes());
+            mainTimerMinutes = sum;
+            mainTimerRemainingSeconds = sum * 60;
+            document.getElementById('main-timer-input').value = sum;
+            if (document.getElementById('modal-main-timer-input')) {
+                document.getElementById('modal-main-timer-input').value = sum;
+            }
+            checkTimeValidation();
+            updateGlobalTimerUI();
+            saveToStorage();
+        }
+
+        function adjustMainTimerMinutes(delta) {
+            setMainTimerFromInput(mainTimerMinutes + delta);
+        }
+
+        function setMainTimerFromInput(val) {
+            let num = parseInt(val);
+            if (isNaN(num) || num < 1) num = 1;
+            if (num > 180) num = 180;
+            mainTimerMinutes = num;
+            mainTimerRemainingSeconds = num * 60;
+            document.getElementById('main-timer-input').value = num;
+            if (document.getElementById('modal-main-timer-input')) {
+                document.getElementById('modal-main-timer-input').value = num;
+            }
+            checkTimeValidation();
+            updateGlobalTimerUI();
+            saveToStorage();
+        }
+
+        function setStepDuration(stepIdx, newMinutes, event) {
+            if (event) event.stopPropagation();
+            let m = parseInt(newMinutes);
+            if (isNaN(m) || m < 1) m = 1;
+            if (m > 15) {
+                alert('⚠️ Egy feladat ideje legfeljebb 15 perc lehet (1–15 perc között állítható)!');
+                m = 15;
+            }
+            scheduleSteps[stepIdx].durationMinutes = m;
+            scheduleSteps[stepIdx].remainingSeconds = m * 60;
+            checkTimeValidation();
+            renderScheduleSteps();
+            renderModalTasksTimeList();
+            saveToStorage();
+        }
+
+        function validateAndCloseTimerModal() {
+            if (!checkTimeValidation()) {
+                alert('⚠️ Hiba: A feladatok összesített ideje és a főoldali Time Timer ideje nem egyezik! Kérlek, javítsd a feladatok idejét, vagy kattints a "Legyen egyenlő!" gombra!');
+                return;
+            }
+            closeModal('timer-modal');
+        }
+
+        function describeArc(x, y, radius, fraction) {
+            if (fraction <= 0) return '';
+            if (fraction >= 0.999) {
+                return `M ${x} ${y - radius} A ${radius} ${radius} 0 1 1 ${x - 0.01} ${y - radius} Z`;
+            }
+            const angle = fraction * 360;
+            const rad = (angle * Math.PI) / 180;
+            const endX = x + radius * Math.sin(rad);
+            const endY = y - radius * Math.cos(rad);
+            const largeArcFlag = angle > 180 ? 1 : 0;
+            return `M ${x} ${y} L ${x} ${y - radius} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY} Z`;
+        }
+
+        function updateGlobalTimerUI() {
+            const totalSec = Math.max(1, mainTimerMinutes * 60);
+            const fraction = Math.max(0, Math.min(1, mainTimerRemainingSeconds / totalSec));
+            const sector = document.getElementById('global-timer-sector');
+            if (sector) {
+                sector.setAttribute('d', describeArc(50, 50, 44, fraction));
+            }
+            const mins = Math.floor(mainTimerRemainingSeconds / 60);
+            const secs = mainTimerRemainingSeconds % 60;
+            const disp = document.getElementById('global-timer-display');
+            if (disp) {
+                disp.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+        }
+
+        function toggleGlobalTimer() {
+            if (globalTimerInterval) {
+                clearInterval(globalTimerInterval);
+                globalTimerInterval = null;
+                document.getElementById('global-start-btn').innerHTML = '▶️ FOLYTATÁS';
+                document.getElementById('global-start-btn').className = 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow transition';
+                return;
+            }
+
+            if (!checkTimeValidation()) {
+                alert('⚠️ HIBA: A feladatok összesített ideje (' + getTasksTotalMinutes() + ' perc) nem egyezik meg a főoldali Time Timer idejével (' + mainTimerMinutes + ' perc)!\n\nKérlek, javítsd egyesével a feladatok időkeretét (1-15 perc között), vagy igazítsd hozzá a főoldali időzítőt!');
+                openModal('timer-modal');
+                return;
+            }
+
+            document.getElementById('global-start-btn').innerHTML = '⏸️ SZÜNET';
+            document.getElementById('global-start-btn').className = 'flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs py-2.5 px-3 rounded-xl shadow transition';
+
+            globalTimerInterval = setInterval(() => {
+                if (mainTimerRemainingSeconds > 0) {
+                    mainTimerRemainingSeconds--;
+                }
+
+                const targetIdx = activeRunningStepIdx !== null ? activeRunningStepIdx : scheduleSteps.findIndex(s => !s.completed);
+                if (targetIdx !== -1 && scheduleSteps[targetIdx]) {
+                    if (scheduleSteps[targetIdx].remainingSeconds > 0) {
+                        scheduleSteps[targetIdx].remainingSeconds--;
+                        if (scheduleSteps[targetIdx].remainingSeconds === 0) {
+                            playChime(600, 1100);
+                        }
+                    }
+                }
+
+                updateGlobalTimerUI();
+                renderScheduleSteps();
+
+                if (mainTimerRemainingSeconds <= 0) {
+                    clearInterval(globalTimerInterval);
+                    globalTimerInterval = null;
+                    playChime(500, 1000);
+                    triggerCelebration();
+                    document.getElementById('global-start-btn').innerHTML = '▶️ INDÍTÁS';
+                }
+            }, 1000);
+        }
+
+        function stopAndResetGlobalTimer() {
+            if (globalTimerInterval) {
+                clearInterval(globalTimerInterval);
+                globalTimerInterval = null;
+            }
+            mainTimerRemainingSeconds = mainTimerMinutes * 60;
+            scheduleSteps.forEach(s => { s.remainingSeconds = (s.durationMinutes || 5) * 60; });
+            document.getElementById('global-start-btn').innerHTML = '▶️ INDÍTÁS';
+            document.getElementById('global-start-btn').className = 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow transition';
+            updateGlobalTimerUI();
+            renderScheduleSteps();
+        }
+
+        // --- BAL OLDALI HÍVÓKÁRTYÁK, KÉPCSERE ÉS TÖMEGES FELTÖLTÉS ---
+        async function handleBulkCardUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            for (const file of files) {
+                const compressedUrl = await compressImageFile(file);
+                const cleanName = file.name.replace(/\.[^/.]+$/, '').slice(0, 18);
+                const newCardObj = {
+                    id: 'bulk_card_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                    phoneme: '',
+                    word: cleanName,
+                    icon: '🖼️',
+                    imageUrl: compressedUrl,
+                    audioUrl: null
+                };
+                sidebarCards.push({ ...newCardObj });
+                presetCallingCards.push({ ...newCardObj });
+            }
+            saveToStorage();
+            renderSidebarCards();
+            renderPresetGallery();
+            playChime(550, 900);
+            event.target.value = '';
+        }
+
+        async function replaceSidebarCardImage(index, event) {
+            event.stopPropagation();
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const compressedUrl = await compressImageFile(file);
+            sidebarCards[index].imageUrl = compressedUrl;
+            saveToStorage();
+            renderSidebarCards();
+            playChime(520, 780);
+        }
+
+        function recordCardVoice(cardId, event) {
+            event.stopPropagation();
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('A böngésződ nem támogatja a mikrofont!');
+                return;
+            }
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                const mediaRecorder = new MediaRecorder(stream);
+                let audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const base64Audio = await blobToDataURL(audioBlob);
+                    const card = sidebarCards.find(c => c.id === cardId);
+                    if (card) {
+                        card.audioUrl = base64Audio;
+                        saveToStorage();
+                        renderSidebarCards();
+                        playCardAudio(card);
+                    }
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                mediaRecorder.start();
+                alert('🎙️ Felvétel folyamatban (3 mp)... Mondd ki a hívóhangot vagy szót!');
+                setTimeout(() => { if (mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 3000);
+            }).catch(() => alert('Mikrofon engedély szükséges!'));
+        }
+
+        function playCardAudio(card) {
+            if (!card) return;
+            if (card.audioUrl) {
+                const audio = new Audio(card.audioUrl);
+                audio.volume = 1.0;
+                audio.play().catch(() => {});
+            } else if (card.spokenText) {
+                speakHungarianText(card.spokenText);
+            } else if (card.word) {
+                speakHungarianText(card.word);
+            } else {
+                playChime(500, 750);
+            }
+        }
+
+        function playChime(freq1 = 440, freq2 = 880) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq1, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.17);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.18);
+            } catch (e) {}
+        }
+
+        function removeSidebarCard(index, event) {
+            event.stopPropagation();
+            const card = sidebarCards[index];
+            const name = `${card.phoneme || ''} ${card.word || 'Kép'}`.trim();
+            if (!confirm(`⚠️ Biztosan VÉGLEGESEN törölni szeretnéd (el szeretnéd tüntetni) a(z) „${name}” kártyát a bal oldali sávból?`)) {
+                return;
+            }
+            sidebarCards.splice(index, 1);
+            saveToStorage();
+            renderSidebarCards();
+        }
+
+        function renderSidebarCards() {
+            const container = document.getElementById('calling-cards-list');
+            container.innerHTML = '';
+            sidebarCards.forEach((card, index) => {
+                const isSelected = selectedCardForTap && selectedCardForTap.id === card.id;
+                const visual = card.imageUrl
+                    ? `<img src="${card.imageUrl}" class="w-14 h-14 rounded-xl object-cover border-2 border-slate-300 shadow-xs">`
+                    : `<span class="text-5xl leading-none">${card.icon}</span>`;
+
+                const el = document.createElement('div');
+                el.className = `bg-white rounded-2xl p-2 shadow-md flex items-center justify-between cursor-pointer border-2 border-slate-200 ${isSelected ? 'selected-card-ring' : ''}`;
+                el.draggable = true;
+                el.ondragstart = (ev) => ev.dataTransfer.setData('text/plain', JSON.stringify(card));
+                el.onclick = () => selectCardForTap(card);
+
+                const micBg = card.audioUrl ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        ${visual}
+                        <div class="flex flex-col">
+                            <span class="font-black text-sm text-slate-900">${card.phoneme || ''}</span>
+                            <span class="text-[10px] font-bold text-slate-500">${card.word || ''}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                        <label title="Kép cseréje saját képre" class="cursor-pointer w-7 h-7 rounded-full bg-slate-100 hover:bg-sky-100 text-slate-700 flex items-center justify-center text-xs">
+                            🖼️
+                            <input type="file" accept="image/*" class="hidden" onchange="replaceSidebarCardImage(${index}, event)">
+                        </label>
+                        <button onclick="playCardAudio(sidebarCards[${index}])" title="Lejátszás / Kimondás" class="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center text-xs">🔊</button>
+                        <button onclick="recordCardVoice('${card.id}', event)" title="Saját hang rögzítése" class="w-7 h-7 rounded-full ${micBg} flex items-center justify-center text-xs">🎙️</button>
+                        <button onclick="removeSidebarCard(${index}, event)" title="Végleges törlés a sávból" class="w-6 h-6 rounded-full bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-600 flex items-center justify-center text-[10px] font-black transition">✕</button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // --- MENETREND LÉPÉSEK RENDERELÉSE ---
+        function renderScheduleSteps() {
+            const container = document.getElementById('steps-list');
+            container.innerHTML = '';
+
+            const firstActiveIndex = scheduleSteps.findIndex(s => !s.completed);
+
+            scheduleSteps.forEach((step, idx) => {
+                const isActive = idx === firstActiveIndex;
+                let stateClass = 'bg-white border-2 border-slate-200';
+                if (step.completed) {
+                    stateClass = completionMode === 'hide' ? 'step-completed-hide' : 'step-completed-fade';
+                } else if (isActive) {
+                    stateClass = 'active-step-glow';
+                }
+
+                const mainVisual = step.imageUrl
+                    ? `<img src="${step.imageUrl}" class="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover border-2 border-slate-300 shadow">`
+                    : `<span class="text-5xl md:text-6xl leading-none">${step.leftIcon}</span>`;
+
+                const badgesHtml = step.attachedCards.map((c, bIdx) => {
+                    const cVis = c.imageUrl
+                        ? `<img src="${c.imageUrl}" class="w-10 h-10 rounded-lg object-cover">`
+                        : `<span class="text-3xl">${c.icon || '🔊'}</span>`;
+                    return `
+                        <span onclick="event.stopPropagation(); playCardAudio(scheduleSteps[${idx}].attachedCards[${bIdx}])" class="inline-flex items-center gap-1.5 bg-sky-50 border-2 border-sky-400 text-sky-950 font-black text-[10px] px-2 py-1 rounded-2xl shadow-xs cursor-pointer">
+                            ${cVis}
+                            <span>${c.phoneme || ''}</span>
+                            <button onclick="event.stopPropagation(); removeAttachedCard(${idx}, ${bIdx})" title="Kép végleges eltávolítása a feladatról" class="ml-0.5 text-rose-600 hover:text-rose-800 font-black text-xs">×</button>
+                        </span>
+                    `;
+                }).join('');
+
+                const totalTaskSec = Math.max(1, (step.durationMinutes || 5) * 60);
+                const remSec = step.remainingSeconds !== undefined ? step.remainingSeconds : totalTaskSec;
+                const progressPct = Math.round(((totalTaskSec - remSec) / totalTaskSec) * 100);
+                const remFraction = Math.max(0, Math.min(1, remSec / totalTaskSec));
+                const mMin = Math.floor(remSec / 60);
+                const mSec = remSec % 60;
+
+                const row = document.createElement('div');
+                row.className = `step-card rounded-3xl px-4 py-3 shadow-md flex flex-col gap-2 cursor-pointer relative ${stateClass}`;
+                row.ondragover = (e) => e.preventDefault();
+                row.ondrop = (e) => {
+                    e.preventDefault();
+                    try {
+                        const card = JSON.parse(e.dataTransfer.getData('text/plain'));
+                        attachCardToStep(idx, card, e.clientX, e.clientY);
+                    } catch (err) {}
+                };
+                row.onclick = (e) => {
+                    if (selectedCardForTap) {
+                        attachCardToStep(idx, selectedCardForTap, e.clientX, e.clientY);
+                        clearSelectedCard();
+                    } else {
+                        toggleStepCompletion(idx, e);
+                    }
+                };
+
+                row.innerHTML = `
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <span class="text-sm font-black text-slate-400 w-5 text-center">${idx + 1}.</span>
+                            ${mainVisual}
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[11px] md:text-xs font-extrabold tracking-wide uppercase ${step.completed ? 'line-through text-slate-400' : 'text-slate-600'}">
+                                        ${step.title}
+                                    </span>
+                                    <button onclick="showInfoPopover('${step.leftIcon}', '${step.title}', '${step.desc || 'Logopédiai fejlesztő feladat.'}', event)" title="Feladat leírása" class="w-5 h-5 rounded-full bg-slate-200 hover:bg-sky-500 hover:text-white text-slate-700 font-black text-[10px] flex items-center justify-center">
+                                        ?
+                                    </button>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5 mt-1">${badgesHtml}</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="text-4xl md:text-5xl hidden sm:inline leading-none">${step.rightIcon || ''}</span>
+                            ${step.completed ? `
+                                <div class="flex flex-col items-center">
+                                    <div class="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center font-black text-3xl shadow-md">✓</div>
+                                    <span class="text-[9px] font-black text-emerald-700 mt-0.5">KÉSZ!</span>
+                                </div>
+                            ` : `
+                                <div class="w-12 h-12 rounded-full border-4 border-slate-300 bg-white hover:border-emerald-400 transition shadow-inner"></div>
+                            `}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 pt-1.5 border-t border-slate-200/80" onclick="event.stopPropagation()">
+                        <svg viewBox="0 0 36 36" class="w-7 h-7 -rotate-90 rounded-full border border-slate-400 bg-white shrink-0">
+                            <path d="${describeArc(18, 18, 16, remFraction)}" fill="#ef4444" />
+                        </svg>
+
+                        <div class="flex-1 bg-slate-200 h-3.5 rounded-full overflow-hidden p-0.5">
+                            <div class="bg-gradient-to-r from-amber-400 to-emerald-500 h-full rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
+                        </div>
+
+                        <div class="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-xl border border-slate-200">
+                            <button onclick="setStepDuration(${idx}, ${step.durationMinutes - 1}, event)" class="w-5 h-5 rounded bg-white font-black text-xs text-slate-700 shadow-xs">-</button>
+                            <span class="text-[10px] font-black text-slate-700 min-w-[42px] text-center" title="Hátralévő: ${String(mMin).padStart(2,'0')}:${String(mSec).padStart(2,'0')}">
+                                ${step.durationMinutes} perc
+                            </span>
+                            <button onclick="setStepDuration(${idx}, ${step.durationMinutes + 1}, event)" class="w-5 h-5 rounded bg-white font-black text-xs text-slate-700 shadow-xs">+</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            renderSettingsStepsList();
+            renderTaskBankGrid();
+            renderModalTasksTimeList();
+        }
+
+        function toggleStepCompletion(idx, event) {
+            const step = scheduleSteps[idx];
+            step.completed = !step.completed;
+            if (step.completed) {
+                step.remainingSeconds = 0;
+                playChime(500, 960);
+                if (event) spawnSparkles(event.clientX, event.clientY);
+                if (scheduleSteps.every(s => s.completed)) setTimeout(triggerCelebration, 350);
+            } else {
+                step.remainingSeconds = (step.durationMinutes || 5) * 60;
+                playChime(350, 260);
+            }
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function selectCardForTap(card) {
+            selectedCardForTap = card;
+            playCardAudio(card);
+            document.getElementById('selected-helper').classList.remove('hidden');
+            document.getElementById('selected-helper-name').textContent = `${card.phoneme || ''} ${card.word || ''}`;
+            renderSidebarCards();
+        }
+
+        function clearSelectedCard() {
+            selectedCardForTap = null;
+            document.getElementById('selected-helper').classList.add('hidden');
+            renderSidebarCards();
+        }
+
+        function attachCardToStep(stepIdx, card, x, y) {
+            scheduleSteps[stepIdx].attachedCards.push(card);
+            playCardAudio(card);
+            if (x && y) spawnSparkles(x, y);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function removeAttachedCard(stepIdx, cardIdx) {
+            const c = scheduleSteps[stepIdx].attachedCards[cardIdx];
+            const name = `${c.phoneme || ''} ${c.word || 'Kép'}`.trim();
+            if (!confirm(`⚠️ Biztosan véglegesen eltávolítod a(z) „${name}” képet erről a feladatról?`)) {
+                return;
+            }
+            scheduleSteps[stepIdx].attachedCards.splice(cardIdx, 1);
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        // --- FELADATBANK RENDERELÉSE, KÉPCSERÉJE ÉS VÉGLEGES TÖRLÉSE ---
+        function renderTaskBankGrid() {
+            const grid = document.getElementById('task-bank-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            taskBank.forEach((item, bankIdx) => {
+                const isAdded = scheduleSteps.some(s => s.bankId === item.bankId);
+                const visual = item.imageUrl
+                    ? `<img src="${item.imageUrl}" class="w-12 h-12 rounded-xl object-cover border border-slate-300 shrink-0">`
+                    : `<span class="text-3xl shrink-0">${item.leftIcon}</span>`;
+
+                const btn = document.createElement('div');
+                btn.className = `cursor-pointer p-3 rounded-2xl border-2 flex items-center justify-between gap-2 transition ${isAdded ? 'bg-emerald-50 border-emerald-500' : 'bg-slate-50 border-slate-200 hover:border-sky-400'}`;
+                btn.onclick = () => toggleBankTask(item);
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        ${visual}
+                        <div class="truncate">
+                            <div class="text-xs font-black text-slate-800 truncate">${item.title}</div>
+                            <div class="text-[10px] text-slate-500">Idő: ${item.defaultDuration} perc</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
+                        <label title="Feladat képének cseréje és rögzítése" class="cursor-pointer w-6 h-6 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-800 font-black text-xs flex items-center justify-center">
+                            🖼️
+                            <input type="file" accept="image/*" class="hidden" onchange="replaceTaskBankImage(${bankIdx}, event)">
+                        </label>
+                        <button onclick="showInfoPopover('${item.leftIcon}', '${item.title}', '${item.desc}', event)" title="Leírás" class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-black text-xs">?</button>
+                        <button onclick="deleteTaskFromBank(${bankIdx}, event)" title="Feladat végleges törlése" class="w-6 h-6 rounded-full bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-600 font-black text-xs flex items-center justify-center transition">🗑️</button>
+                    </div>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        async function replaceTaskBankImage(bankIdx, event) {
+            event.stopPropagation();
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const compressedUrl = await compressImageFile(file);
+            const targetBank = taskBank[bankIdx];
+            targetBank.imageUrl = compressedUrl;
+            scheduleSteps.forEach(s => {
+                if (s.bankId === targetBank.bankId) {
+                    s.imageUrl = compressedUrl;
+                }
+            });
+            saveToStorage();
+            renderScheduleSteps();
+            playChime(550, 880);
+        }
+
+        function deleteTaskFromBank(bankIdx, event) {
+            event.stopPropagation();
+            const target = taskBank[bankIdx];
+            if (!confirm(`⚠️ Biztosan VÉGLEGESEN törölni szeretnéd (el szeretnéd tüntetni) a(z) „${target.title}” feladatot a feladatbankból és a menetrendből?`)) {
+                return;
+            }
+            taskBank.splice(bankIdx, 1);
+            scheduleSteps = scheduleSteps.filter(s => s.bankId !== target.bankId);
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function toggleBankTask(bankItem) {
+            const existingIdx = scheduleSteps.findIndex(s => s.bankId === bankItem.bankId);
+            if (existingIdx !== -1) {
+                if (!confirm(`⚠️ Biztosan eltávolítod a(z) „${bankItem.title}” feladatot az aktuális menetrendből?`)) {
+                    return;
+                }
+                scheduleSteps.splice(existingIdx, 1);
+            } else {
+                scheduleSteps.push({
+                    id: Date.now(),
+                    bankId: bankItem.bankId,
+                    title: bankItem.title,
+                    leftIcon: bankItem.leftIcon,
+                    rightIcon: bankItem.rightIcon,
+                    imageUrl: bankItem.imageUrl || null,
+                    desc: bankItem.desc,
+                    durationMinutes: bankItem.defaultDuration,
+                    remainingSeconds: bankItem.defaultDuration * 60,
+                    completed: false,
+                    attachedCards: []
+                });
+            }
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        async function handleBulkTaskUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            for (const file of files) {
+                const compressedUrl = await compressImageFile(file);
+                const cleanTitle = file.name.replace(/\.[^/.]+$/, '').toUpperCase().slice(0, 22);
+                const newBankId = 'bulk_tb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+                taskBank.push({
+                    bankId: newBankId,
+                    title: cleanTitle,
+                    leftIcon: '🖼️',
+                    rightIcon: '✨',
+                    imageUrl: compressedUrl,
+                    desc: 'Saját feltöltött vizuális feladat.',
+                    defaultDuration: 5,
+                    defaultActive: true
+                });
+                scheduleSteps.push({
+                    id: Date.now() + Math.random(),
+                    bankId: newBankId,
+                    title: cleanTitle,
+                    leftIcon: '🖼️',
+                    rightIcon: '✨',
+                    imageUrl: compressedUrl,
+                    desc: 'Saját feltöltött vizuális feladat.',
+                    durationMinutes: 5,
+                    remainingSeconds: 300,
+                    completed: false,
+                    attachedCards: []
+                });
+            }
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+            playChime(600, 950);
+            event.target.value = '';
+        }
+
+        async function uploadSingleStepImage(idx, event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const compressedUrl = await compressImageFile(file);
+            scheduleSteps[idx].imageUrl = compressedUrl;
+            if (scheduleSteps[idx].bankId) {
+                const b = taskBank.find(t => t.bankId === scheduleSteps[idx].bankId);
+                if (b) b.imageUrl = compressedUrl;
+            }
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function removeStepCustomImage(idx) {
+            const step = scheduleSteps[idx];
+            if (!confirm(`⚠️ Biztosan véglegesen eltávolítod a feltöltött képet a(z) „${step.title}” feladatról?`)) {
+                return;
+            }
+            scheduleSteps[idx].imageUrl = null;
+            if (step.bankId) {
+                const b = taskBank.find(t => t.bankId === step.bankId);
+                if (b) b.imageUrl = null;
+            }
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function renderSettingsStepsList() {
+            const list = document.getElementById('settings-steps-list');
+            if (!list) return;
+            list.innerHTML = '';
+            scheduleSteps.forEach((step, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex flex-wrap items-center justify-between gap-2 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200';
+                
+                const removeImgBtn = step.imageUrl
+                    ? `<button onclick="removeStepCustomImage(${idx})" class="bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-black px-2 py-1 rounded-lg">✕ Kép törlése</button>`
+                    : '';
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-black text-xs text-slate-800">${idx + 1}. ${step.leftIcon} ${step.title}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                        <label class="cursor-pointer bg-sky-100 hover:bg-sky-200 text-sky-800 text-[10px] font-black px-2 py-1 rounded-lg">
+                            🖼️ Képcsere
+                            <input type="file" accept="image/*" class="hidden" onchange="uploadSingleStepImage(${idx}, event)">
+                        </label>
+                        ${removeImgBtn}
+                        <input type="number" min="1" max="15" value="${step.durationMinutes}" onchange="setStepDuration(${idx}, this.value, event)" class="w-12 p-1 rounded border border-slate-300 text-center font-black text-xs" title="1-15 perc">
+                        <span class="text-[10px] font-bold text-slate-500">perc</span>
+                        <button onclick="moveStep(${idx}, -1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬆️</button>
+                        <button onclick="moveStep(${idx}, 1)" class="px-2 py-1 bg-white rounded shadow text-xs font-bold">⬇️</button>
+                        <button onclick="deleteStep(${idx})" title="Feladat végleges törlése" class="px-2 py-1 bg-rose-100 text-rose-700 rounded text-xs font-bold hover:bg-rose-600 hover:text-white transition">🗑️ Törlés</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function renderModalTasksTimeList() {
+            const list = document.getElementById('modal-tasks-time-list');
+            if (!list) return;
+            list.innerHTML = '';
+            scheduleSteps.forEach((step, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200';
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">${step.leftIcon}</span>
+                        <span class="text-xs font-black text-slate-800">${idx + 1}. ${step.title}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="setStepDuration(${idx}, ${step.durationMinutes - 1}, event)" class="w-7 h-7 rounded-lg bg-slate-200 font-black text-xs">-</button>
+                        <input type="number" min="1" max="15" value="${step.durationMinutes}" onchange="setStepDuration(${idx}, this.value, event)" class="w-14 p-1 rounded-lg border border-slate-300 text-center font-black text-sm">
+                        <button onclick="setStepDuration(${idx}, ${step.durationMinutes + 1}, event)" class="w-7 h-7 rounded-lg bg-slate-200 font-black text-xs">+</button>
+                        <span class="text-xs font-bold text-slate-600">perc (1–15)</span>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function moveStep(idx, dir) {
+            const t = idx + dir;
+            if (t < 0 || t >= scheduleSteps.length) return;
+            const temp = scheduleSteps[idx];
+            scheduleSteps[idx] = scheduleSteps[t];
+            scheduleSteps[t] = temp;
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function deleteStep(idx) {
+            const step = scheduleSteps[idx];
+            if (!confirm(`⚠️ Biztosan VÉGLEGESEN törölni szeretnéd a(z) „${step.title}” feladatot a menetrendből?`)) {
+                return;
+            }
+            scheduleSteps.splice(idx, 1);
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        async function addNewScheduleStep() {
+            const title = document.getElementById('new-step-title').value.trim().toUpperCase();
+            const desc = document.getElementById('new-step-desc').value.trim() || 'Egyéni logopédiai fejlesztő feladat.';
+            const icon = document.getElementById('new-step-icon').value.trim() || '⭐';
+            let dur = parseInt(document.getElementById('new-step-duration').value) || 5;
+            if (dur < 1) dur = 1;
+            if (dur > 15) dur = 15;
+            const fileInput = document.getElementById('new-step-image');
+            if (!title) { alert('Kérlek, adj nevet az új feladatnak!'); return; }
+
+            let imgUrl = null;
+            if (fileInput.files && fileInput.files[0]) {
+                imgUrl = await compressImageFile(fileInput.files[0]);
+            }
+
+            const newBankId = 'custom_tb_' + Date.now();
+            taskBank.push({
+                bankId: newBankId,
+                title,
+                leftIcon: icon,
+                rightIcon: '✨',
+                imageUrl: imgUrl,
+                desc,
+                defaultDuration: dur,
+                defaultActive: true
+            });
+            scheduleSteps.push({
+                id: Date.now(),
+                bankId: newBankId,
+                title,
+                leftIcon: icon,
+                rightIcon: '✨',
+                imageUrl: imgUrl,
+                desc,
+                durationMinutes: dur,
+                remainingSeconds: dur * 60,
+                completed: false,
+                attachedCards: []
+            });
+            document.getElementById('new-step-title').value = '';
+            document.getElementById('new-step-desc').value = '';
+            fileInput.value = '';
+            checkTimeValidation();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        // =========================================================================
+        // 3. GYORSVÁLASZTÓ – ALAP MAGYAR LOGOPÉDIAI HÍVÓKÉPEK (KÉPCSERE + TÖRLÉS)
+        // =========================================================================
+        function renderPresetGallery() {
+            const gallery = document.getElementById('preset-gallery');
+            if (!gallery) return;
+            gallery.innerHTML = '';
+
+            if (presetCallingCards.length === 0) {
+                gallery.innerHTML = `
+                    <div class="col-span-full bg-slate-100 rounded-2xl p-4 text-center text-xs font-bold text-slate-500">
+                        A Gyorsválasztó jelenleg üres. Tölts fel saját képeket fent, vagy kattints az „↺ Alap képek visszaállítása” gombra!
+                    </div>
+                `;
+                return;
+            }
+
+            presetCallingCards.forEach((card, idx) => {
+                const visual = card.imageUrl
+                    ? `<img src="${card.imageUrl}" class="w-16 h-16 rounded-2xl object-cover border-2 border-sky-300 shadow-xs">`
+                    : `<span class="text-5xl leading-none py-1">${card.icon}</span>`;
+
+                const resetImgBtn = card.imageUrl
+                    ? `<button onclick="removePresetCustomImage(${idx}, event)" title="Saját kép eltávolítása és alap ikon visszaállítása" class="text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 font-black px-2 py-0.5 rounded-lg">↺ Ikon</button>`
+                    : '';
+
+                const cardEl = document.createElement('div');
+                cardEl.className = 'p-3 rounded-2xl border-2 border-slate-200 hover:border-sky-400 bg-slate-50 flex flex-col items-center justify-between gap-2 shadow-xs transition';
+
+                cardEl.innerHTML = `
+                    <div class="w-full flex items-center justify-between gap-1">
+                        <label title="Kép cseréje saját képre (rögzítve marad a Gyorsválasztóban)" class="cursor-pointer bg-sky-100 hover:bg-sky-600 hover:text-white text-sky-800 text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 transition shadow-xs">
+                            <span>🖼️ Képcsere</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="replacePresetCardImage(${idx}, event)">
+                        </label>
+                        ${resetImgBtn}
+                        <button onclick="deletePresetCard(${idx}, event)" title="Hívókép végleges törlése a gyorsválasztóból" class="bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-700 text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-0.5 transition shadow-xs">
+                            <span>🗑️ Törlés</span>
+                        </button>
+                    </div>
+
+                    <div onclick="addPresetCardToSidebar(${idx})" class="cursor-pointer flex flex-col items-center gap-1 my-1 w-full hover:scale-105 transition">
+                        ${visual}
+                        <span class="font-black text-slate-900 text-xs text-center leading-tight mt-1">${card.phoneme || ''} ${card.word || ''}</span>
+                    </div>
+
+                    <button onclick="addPresetCardToSidebar(${idx})" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black py-1.5 px-2 rounded-xl shadow-xs transition">
+                        + Betesz a sávba
+                    </button>
+                `;
+                gallery.appendChild(cardEl);
+            });
+        }
+
+        function addPresetCardToSidebar(idx) {
+            const card = presetCallingCards[idx];
+            if (!card) return;
+            sidebarCards.push({
+                ...card,
+                id: card.id + '_' + Date.now(),
+                audioUrl: null
+            });
+            saveToStorage();
+            renderSidebarCards();
+            playCardAudio(card);
+        }
+
+        async function replacePresetCardImage(idx, event) {
+            event.stopPropagation();
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const compressedUrl = await compressImageFile(file);
+            presetCallingCards[idx].imageUrl = compressedUrl;
+
+            const baseId = presetCallingCards[idx].id;
+            sidebarCards.forEach(sc => {
+                if (sc.id === baseId || sc.id.startsWith(baseId + '_')) {
+                    sc.imageUrl = compressedUrl;
+                }
+            });
+
+            saveToStorage();
+            renderPresetGallery();
+            renderSidebarCards();
+            playChime(580, 920);
+        }
+
+        function removePresetCustomImage(idx, event) {
+            event.stopPropagation();
+            const card = presetCallingCards[idx];
+            const label = `${card.phoneme || ''} ${card.word || 'Kép'}`.trim();
+            if (!confirm(`⚠️ Biztosan eltávolítod a feltöltött saját képet a(z) „${label}” hívóképről?`)) {
+                return;
+            }
+            presetCallingCards[idx].imageUrl = null;
+            saveToStorage();
+            renderPresetGallery();
+        }
+
+        function deletePresetCard(idx, event) {
+            event.stopPropagation();
+            const card = presetCallingCards[idx];
+            const label = `${card.phoneme || ''} ${card.word || 'Kép'}`.trim();
+            if (!confirm(`⚠️ Biztosan VÉGLEGESEN törölni szeretnéd (el szeretnéd tüntetni) a(z) „${label}” hívóképet a gyorsválasztóból?`)) {
+                return;
+            }
+            presetCallingCards.splice(idx, 1);
+            saveToStorage();
+            renderPresetGallery();
+        }
+
+        function clearAllPresetCards() {
+            if (!confirm('⚠️ Biztosan VÉGLEGESEN törölni szeretnéd az ÖSSZES hívóképet a Gyorsválasztóból?')) {
+                return;
+            }
+            presetCallingCards = [];
+            saveToStorage();
+            renderPresetGallery();
+        }
+
+        function restoreDefaultPresetCards() {
+            if (!confirm('⚠️ Biztosan visszaállítod az alap magyar logopédiai hívóképeket a Gyorsválasztóban?')) {
+                return;
+            }
+            presetCallingCards = JSON.parse(JSON.stringify(DEFAULT_PRESET_CALLING_CARDS));
+            saveToStorage();
+            renderPresetGallery();
+        }
+
+        async function addCustomCallingCard() {
+            const phoneme = document.getElementById('new-card-phoneme').value.trim() || '';
+            const word = document.getElementById('new-card-word').value.trim() || 'Saját kép';
+            const icon = document.getElementById('new-card-icon').value.trim() || '⭐';
+            const fileInput = document.getElementById('new-card-image');
+
+            let imgUrl = null;
+            if (fileInput.files && fileInput.files[0]) {
+                imgUrl = await compressImageFile(fileInput.files[0]);
+            }
+
+            const newCard = {
+                id: 'custom_' + Date.now(),
+                phoneme, word, icon,
+                imageUrl: imgUrl,
+                audioUrl: null
+            };
+            sidebarCards.push({ ...newCard });
+            presetCallingCards.push({ ...newCard });
+
+            document.getElementById('new-card-phoneme').value = '';
+            document.getElementById('new-card-word').value = '';
+            fileInput.value = '';
+
+            saveToStorage();
+            renderSidebarCards();
+            renderPresetGallery();
+            playCardAudio(newCard);
+        }
+
+        function restoreFactoryDefaults() {
+            if (!confirm('⚠️ Biztosan visszaállítod az összes eredeti gyári hívóképet, kommunikációs hangot és feladatot?')) {
+                return;
+            }
+            taskBank = JSON.parse(JSON.stringify(DEFAULT_TASK_BANK));
+            presetCallingCards = JSON.parse(JSON.stringify(DEFAULT_PRESET_CALLING_CARDS));
+            aacChildButtons = JSON.parse(JSON.stringify(DEFAULT_AAC_CHILD_BUTTONS));
+            saveToStorage();
+            renderAacButtons();
+            renderPresetGallery();
+            renderScheduleSteps();
+            alert('✔ A gyári hívóképek, hangok és feladatok sikeresen visszaálltak!');
+        }
+
+        function setCompletionMode(mode) { completionMode = mode; renderScheduleSteps(); }
+        function changeTheme(panel, header) {
+            document.getElementById('schedule-bg').style.backgroundColor = panel;
+            document.getElementById('app-header').style.backgroundColor = header;
+        }
+
+        function resetAllSteps() {
+            scheduleSteps.forEach(s => {
+                s.completed = false;
+                s.remainingSeconds = (s.durationMinutes || 5) * 60;
+            });
+            stopAndResetGlobalTimer();
+            saveToStorage();
+            renderScheduleSteps();
+        }
+
+        function triggerCelebration() {
+            const end = Date.now() + 3000;
+            (function frame() {
+                confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0, y: 0.8 } });
+                confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1, y: 0.8 } });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            })();
+        }
+
+        // CSILLAGPOR ANIMÁCIÓ
+        const canvas = document.getElementById('sparkle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        function spawnSparkles(x, y) {
+            for (let i = 0; i < 24; i++) {
+                particles.push({
+                    x, y, vx: (Math.random() - 0.5) * 7, vy: (Math.random() - 0.8) * 7,
+                    size: Math.random() * 6 + 3, alpha: 1,
+                    color: ['#facc15', '#4ade80', '#38bdf8', '#f43f5e'][Math.floor(Math.random() * 4)]
+                });
+            }
+        }
+        (function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles = particles.filter(p => p.alpha > 0.02);
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.alpha -= 0.025;
+                ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            });
+            requestAnimationFrame(animate);
+        })();
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function shareSchedule() {
+            navigator.clipboard.writeText(window.location.href).then(() => alert('🔗 A linket kimásoltam a vágólapra!'));
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem('logopedia_aac_v9', JSON.stringify({
+                    scheduleSteps,
+                    sidebarCards,
+                    presetCallingCards,
+                    taskBank,
+                    aacChildButtons,
+                    aacVoiceRate,
+                    aacVoicePitch,
+                    completionMode,
+                    mainTimerMinutes
+                }));
+            } catch (e) {
+                console.warn('Tárhely figyelmeztetés:', e);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const r = localStorage.getItem('logopedia_aac_v9') || localStorage.getItem('logopedia_aac_v8');
+                if (r) {
+                    const p = JSON.parse(r);
+                    if (p.scheduleSteps) scheduleSteps = p.scheduleSteps;
+                    if (p.sidebarCards) sidebarCards = p.sidebarCards;
+                    if (p.presetCallingCards) presetCallingCards = p.presetCallingCards;
+                    if (p.taskBank) taskBank = p.taskBank;
+                    if (p.aacChildButtons) aacChildButtons = p.aacChildButtons;
+                    if (p.aacVoiceRate) aacVoiceRate = p.aacVoiceRate;
+                    if (p.aacVoicePitch) aacVoicePitch = p.aacVoicePitch;
+                    if (p.completionMode) completionMode = p.completionMode;
+                    if (p.mainTimerMinutes) {
+                        mainTimerMinutes = p.mainTimerMinutes;
+                        mainTimerRemainingSeconds = mainTimerMinutes * 60;
+                    }
+                } else {
+                    syncMainTimerToTasks();
+                }
+            } catch (e) {}
+        }
+
+        window.onload = () => {
+            loadFromStorage();
+            document.getElementById('main-timer-input').value = mainTimerMinutes;
+            document.getElementById('modal-main-timer-input').value = mainTimerMinutes;
+            renderAacButtons();
+            renderSidebarCards();
+            renderScheduleSteps();
+            renderPresetGallery();
+            checkTimeValidation();
+            updateGlobalTimerUI();
+        };
+    </script>
+</body>
+</html>
